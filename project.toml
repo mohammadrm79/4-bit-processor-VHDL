@@ -1,0 +1,19 @@
+name = "vhdl-risc4"
+
+version = "0.1.0"
+
+author = "mohammadreza moafi"
+
+vhdl = "2008"
+
+top = "cpu_top"
+
+simulator = "ghdl"
+
+synthesizer = "yosys"
+
+target = "generic"
+
+word_size = 4
+
+registers = 8
