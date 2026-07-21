@@ -3,22 +3,9 @@
 -- File         : control_fsm.vhdl
 -- Description  : CPU Control Finite State Machine
 --
--- Version      : 1.0.0
--- Language     : VHDL-2008
---
--- Implements:
---   - DD-005 : Multi-Cycle Execution
---   - DD-007 : Non-Pipelined Processor
---   - DD-008 : Single Clock Domain
---   - DD-009 : Synchronous Active-High Reset
---   - DD-013 : Hierarchical RTL Organization
---
--- Execution Stages:
---   FETCH
---   DECODE
---   EXECUTE
---   WRITE_BACK
---   STATE_HALTED
+-- Version      : 1.2.0
+-- Description  :
+--   Added ALU operation control for datapath integration
 --
 -- ============================================================================
 
@@ -62,8 +49,11 @@ entity control_fsm is
         flags_write_enable : out std_logic;
 
 
-        memory_read_enable : out std_logic;
+        memory_read_enable  : out std_logic;
         memory_write_enable : out std_logic;
+
+
+        alu_operation : out alu_operation_t;
 
 
         halted : out std_logic
@@ -78,11 +68,13 @@ architecture rtl of control_fsm is
 
 
     signal current_state : cpu_state_t;
-    signal next_state    : cpu_state_t;
+
+    signal next_state : cpu_state_t;
 
 
 
 begin
+
 
 
     ---------------------------------------------------------------------------
@@ -120,7 +112,7 @@ begin
     -- Next State Logic
     ---------------------------------------------------------------------------
 
-    process(current_state, opcode, zero_flag, carry_flag)
+    process(current_state, opcode)
 
     begin
 
@@ -131,9 +123,7 @@ begin
         case current_state is
 
 
-
             when STATE_RESET =>
-
 
                 next_state <= FETCH;
 
@@ -141,13 +131,11 @@ begin
 
             when FETCH =>
 
-
                 next_state <= DECODE;
 
 
 
             when DECODE =>
-
 
                 next_state <= EXECUTE;
 
@@ -172,15 +160,13 @@ begin
 
             when WRITE_BACK =>
 
-
                 next_state <= FETCH;
 
 
 
             when STATE_HALTED =>
 
-
-            next_state <= STATE_HALTED  ;  -- Remain in HALTED state until reset
+                next_state <= STATE_HALTED;
 
 
 
@@ -192,30 +178,35 @@ begin
 
 
     ---------------------------------------------------------------------------
-    -- Output Control Logic
+    -- Output Decode
     ---------------------------------------------------------------------------
 
-    process(current_state, opcode)
+    process(current_state, opcode, zero_flag, carry_flag)
 
     begin
 
 
-        -----------------------------------------------------------------------
-        -- Default Values
-        -----------------------------------------------------------------------
-
         pc_enable <= '0';
-        pc_load   <= '0';
+
+        pc_load <= '0';
+
 
         ir_enable <= '0';
 
+
         register_write_enable <= '0';
 
+
         flags_write_enable <= '0';
+
 
         memory_read_enable <= '0';
 
         memory_write_enable <= '0';
+
+
+        alu_operation <= ALU_PASS;
+
 
         halted <= '0';
 
@@ -226,7 +217,7 @@ begin
 
 
             -------------------------------------------------------------------
-            -- Fetch Instruction
+            -- FETCH
             -------------------------------------------------------------------
 
             when FETCH =>
@@ -239,24 +230,103 @@ begin
 
 
             -------------------------------------------------------------------
-            -- Decode
+            -- DECODE
             -------------------------------------------------------------------
 
             when DECODE =>
-
 
                 null;
 
 
 
             -------------------------------------------------------------------
-            -- Execute
+            -- EXECUTE
             -------------------------------------------------------------------
 
             when EXECUTE =>
 
 
                 case opcode is
+
+
+                    when OP_ADD =>
+
+                        alu_operation <= ALU_ADD;
+
+                        flags_write_enable <= '1';
+
+
+
+                    when OP_SUB =>
+
+                        alu_operation <= ALU_SUB;
+
+                        flags_write_enable <= '1';
+
+
+
+                    when OP_INC =>
+
+                        alu_operation <= ALU_INC;
+
+                        flags_write_enable <= '1';
+
+
+
+                    when OP_DEC =>
+
+                        alu_operation <= ALU_DEC;
+
+                        flags_write_enable <= '1';
+
+
+
+                    when OP_AND =>
+
+                        alu_operation <= ALU_AND;
+
+                        flags_write_enable <= '1';
+
+
+
+                    when OP_OR =>
+
+                        alu_operation <= ALU_OR;
+
+                        flags_write_enable <= '1';
+
+
+
+                    when OP_XOR =>
+
+                        alu_operation <= ALU_XOR;
+
+                        flags_write_enable <= '1';
+
+
+
+                    when OP_NOT =>
+
+                        alu_operation <= ALU_NOT;
+
+                        flags_write_enable <= '1';
+
+
+
+                    when OP_SHL =>
+
+                        alu_operation <= ALU_SHL;
+
+                        flags_write_enable <= '1';
+
+
+
+                    when OP_SHR =>
+
+                        alu_operation <= ALU_SHR;
+
+                        flags_write_enable <= '1';
+
 
 
                     when OP_LOAD =>
@@ -279,14 +349,42 @@ begin
 
                     when OP_JZ =>
 
-                        null;
+                        if zero_flag = '1' then
+
+                            pc_load <= '1';
+
+                        end if;
 
 
 
                     when OP_JC =>
 
+                        if carry_flag = '1' then
+
+                            pc_load <= '1';
+
+                        end if;
+
+
+
+                    when others =>
+
                         null;
 
+
+
+                end case;
+
+
+
+            -------------------------------------------------------------------
+            -- WRITE BACK
+            -------------------------------------------------------------------
+
+            when WRITE_BACK =>
+
+
+                case opcode is
 
 
                     when OP_ADD |
@@ -298,13 +396,10 @@ begin
                          OP_XOR |
                          OP_NOT |
                          OP_SHL |
-                         OP_SHR =>
+                         OP_SHR |
+                         OP_MOVI |
+                         OP_LOAD =>
 
-                        flags_write_enable <= '1';
-
-
-
-                    when OP_MOVI =>
 
                         register_write_enable <= '1';
 
@@ -321,18 +416,7 @@ begin
 
 
             -------------------------------------------------------------------
-            -- Write Back
-            -------------------------------------------------------------------
-
-            when WRITE_BACK =>
-
-
-                register_write_enable <= '1';
-
-
-
-            -------------------------------------------------------------------
-            -- Halt
+            -- HALT
             -------------------------------------------------------------------
 
             when STATE_HALTED =>

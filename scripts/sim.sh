@@ -1,122 +1,94 @@
-#!/bin/bash
-
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-
 BUILD_DIR="$PROJECT_ROOT/build"
-WORK_DIR="$PROJECT_ROOT/work"
-WAVE_DIR="$PROJECT_ROOT/wave"
+LOG_DIR="$BUILD_DIR/logs"
+WORK_DIR="$BUILD_DIR/sim"
+WAVE_DIR="$BUILD_DIR/waves"
 
-mkdir -p "$BUILD_DIR"
-mkdir -p "$WORK_DIR"
-mkdir -p "$WAVE_DIR"
+mkdir -p "$BUILD_DIR" "$LOG_DIR" "$WORK_DIR" "$WAVE_DIR"
 
-echo "======================================"
-echo "RISC-4 Simulation"
-echo "======================================"
+TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
+LOG_FILE="$LOG_DIR/sim_${TIMESTAMP}.log"
+: > "$LOG_FILE"
 
-echo "Cleaning previous simulation..."
-rm -rf "$WORK_DIR"/*
-rm -f "$BUILD_DIR"/*.ghw
+log() {
+    printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" | tee -a "$LOG_FILE"
+}
 
-echo "Analyzing package..."
+run_logged() {
+    local label="$1"
+    shift
 
-ghdl -a \
---std=08 \
---workdir="$WORK_DIR" \
-"$PROJECT_ROOT/src/pkg/cpu_pkg.vhdl"
+    log "$label"
+    "$@" 2>&1 | awk '{ print strftime("[%Y-%m-%d %H:%M:%S]"), $0; fflush(); }' | tee -a "$LOG_FILE"
+}
 
+cd "$PROJECT_ROOT"
 
-echo "Analyzing common modules..."
+log "======================================"
+log "RISC-4 Simulation"
+log "======================================"
+log "Log file: $LOG_FILE"
+log "Wave GHW: $WAVE_DIR/cpu.ghw"
+log "Wave VCD: $WAVE_DIR/cpu.vcd"
 
-ghdl -a \
---std=08 \
---workdir="$WORK_DIR" \
-"$PROJECT_ROOT/src/rtl/common/register.vhdl"
+log "Cleaning previous simulation..."
+find "$WORK_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
+find "$WAVE_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
 
-ghdl -a \
---std=08 \
---workdir="$WORK_DIR" \
-"$PROJECT_ROOT/src/rtl/common/counter.vhdl"
+run_logged "Analyzing package..." \
+    ghdl -a --std=08 --workdir="$WORK_DIR" "$PROJECT_ROOT/src/pkg/cpu_pkg.vhdl"
 
-
-echo "Analyzing datapath modules..."
-
-for file in "$PROJECT_ROOT"/src/rtl/datapath/*.vhdl
-do
-    ghdl -a \
-    --std=08 \
-    --workdir="$WORK_DIR" \
-    "$file"
+log "Analyzing common modules..."
+for file in "$PROJECT_ROOT"/src/rtl/common/*.vhdl; do
+    run_logged "Checking: $file" ghdl -a --std=08 --workdir="$WORK_DIR" "$file"
 done
 
-
-echo "Analyzing memory modules..."
-
-for file in "$PROJECT_ROOT"/src/rtl/memory/*.vhdl
-do
-    ghdl -a \
-    --std=08 \
-    --workdir="$WORK_DIR" \
-    "$file"
+log "Analyzing datapath modules..."
+for file in "$PROJECT_ROOT"/src/rtl/datapath/*.vhdl; do
+    run_logged "Checking: $file" ghdl -a --std=08 --workdir="$WORK_DIR" "$file"
 done
 
+log "Analyzing memory modules..."
+for file in "$PROJECT_ROOT"/src/rtl/memory/*.vhdl; do
+    run_logged "Checking: $file" ghdl -a --std=08 --workdir="$WORK_DIR" "$file"
+done
 
-echo "Analyzing control modules..."
+log "Analyzing control modules..."
+CONTROL_FILES=(
+    "$PROJECT_ROOT/src/rtl/control/control_fsm.vhdl"
+    "$PROJECT_ROOT/src/rtl/control/instruction_decoder.vhdl"
+    "$PROJECT_ROOT/src/rtl/control/cpu_core.vhdl"
+)
 
-ghdl -a \
---std=08 \
---workdir="$WORK_DIR" \
-"$PROJECT_ROOT/src/rtl/control/instruction_decoder.vhdl"
+for file in "${CONTROL_FILES[@]}"; do
+    run_logged "Checking: $file" ghdl -a --std=08 --workdir="$WORK_DIR" "$file"
+done
 
-ghdl -a \
---std=08 \
---workdir="$WORK_DIR" \
-"$PROJECT_ROOT/src/rtl/control/control_fsm.vhdl"
+run_logged "Analyzing top module..." \
+    ghdl -a --std=08 --workdir="$WORK_DIR" "$PROJECT_ROOT/src/top/system_top.vhdl"
 
-ghdl -a \
---std=08 \
---workdir="$WORK_DIR" \
-"$PROJECT_ROOT/src/rtl/control/cpu_core.vhdl"
+run_logged "Analyzing CPU testbench..." \
+    ghdl -a --std=08 --workdir="$WORK_DIR" "$PROJECT_ROOT/tb/integration/tb_cpu.vhdl"
 
+run_logged "Elaborating testbench..." \
+    ghdl -e --std=08 --workdir="$WORK_DIR" tb_cpu
 
-echo "Analyzing top module..."
-
-ghdl -a \
---std=08 \
---workdir="$WORK_DIR" \
-"$PROJECT_ROOT/src/top/system_top.vhdl"
-
-
-echo "Analyzing CPU testbench..."
-
-ghdl -a \
---std=08 \
---workdir="$WORK_DIR" \
-"$PROJECT_ROOT/tb/integration/tb_cpu.vhdl"
-
-
-echo "Elaborating testbench..."
-
-ghdl -e \
---std=08 \
---workdir="$WORK_DIR" \
-tb_cpu
-
-
-echo "Running simulation..."
-
+log "Running simulation..."
 ghdl -r \
---std=08 \
---workdir="$WORK_DIR" \
-tb_cpu \
---wave="$WAVE_DIR/cpu.ghw" \
---stop-time=1us
+    --std=08 \
+    --workdir="$WORK_DIR" \
+    tb_cpu \
+    --wave="$WAVE_DIR/cpu.ghw" \
+    --vcd="$WAVE_DIR/cpu.vcd" \
+    --stop-time=1us \
+    2>&1 | awk '{ print strftime("[%Y-%m-%d %H:%M:%S]"), $0; fflush(); }' | tee -a "$LOG_FILE"
 
-
-echo "======================================"
-echo "Simulation completed."
-echo "Waveform:"
-echo "$WAVE_DIR/cpu.ghw"
-echo "======================================"
+log "======================================"
+log "Simulation completed."
+log "Log file: $LOG_FILE"
+log "Waveform GHW: $WAVE_DIR/cpu.ghw"
+log "Waveform VCD: $WAVE_DIR/cpu.vcd"
+log "======================================"

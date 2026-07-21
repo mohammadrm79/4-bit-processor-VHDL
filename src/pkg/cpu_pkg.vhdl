@@ -2,20 +2,13 @@
 -- Project      : RISC-4 Educational CPU
 -- File         : cpu_pkg.vhdl
 -- Description  : Common types, constants, opcodes, and helper definitions
---                shared across the processor RTL.
 --
--- Version      : 1.0.0
--- Language     : VHDL-2008
---
--- This package defines the architectural baseline specified by:
---   - DD-001  : 4-bit Datapath
---   - DD-002  : 16-bit Fixed-Length Instructions
---   - DD-004  : Eight General-Purpose Registers
---   - DD-011  : Multiple Instruction Formats
---   - DD-012  : Initial Opcode Allocation
---   - DD-013  : Hierarchical RTL Organization
+-- Version      : 1.2.0
+-- Description  :
+--   Datapath Integration Support
 --
 -- ============================================================================
+
 
 library ieee;
 
@@ -23,44 +16,56 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 
+
 package cpu_pkg is
+
 
     ---------------------------------------------------------------------------
     -- CPU Architectural Constants
     ---------------------------------------------------------------------------
 
     constant DATA_WIDTH              : natural := 4;
+
     constant INSTRUCTION_WIDTH       : natural := 16;
 
     constant REGISTER_COUNT          : natural := 8;
+
     constant REGISTER_ADDRESS_WIDTH  : natural := 3;
 
     constant OPCODE_WIDTH            : natural := 5;
 
     constant ADDRESS_WIDTH           : natural := 11;
 
-    constant RESET_VECTOR            : std_logic_vector(ADDRESS_WIDTH-1 downto 0)
-                                      := (others => '0');
+
+    constant RESET_VECTOR :
+        std_logic_vector(ADDRESS_WIDTH-1 downto 0)
+        := (others => '0');
+
 
 
     ---------------------------------------------------------------------------
-    -- Common Subtypes
+    -- Common Types
     ---------------------------------------------------------------------------
+
 
     subtype data_word_t is
         std_logic_vector(DATA_WIDTH-1 downto 0);
+
 
 
     subtype instruction_t is
         std_logic_vector(INSTRUCTION_WIDTH-1 downto 0);
 
 
+
     subtype opcode_t is
         std_logic_vector(OPCODE_WIDTH-1 downto 0);
 
 
+
     subtype register_index_t is
         std_logic_vector(REGISTER_ADDRESS_WIDTH-1 downto 0);
+
 
 
     subtype address_t is
@@ -68,9 +73,11 @@ package cpu_pkg is
 
 
 
+
     ---------------------------------------------------------------------------
     -- Instruction Formats
     ---------------------------------------------------------------------------
+
 
     type instruction_format_t is
     (
@@ -81,29 +88,34 @@ package cpu_pkg is
     );
 
 
+
     ---------------------------------------------------------------------------
-    -- CPU Execution States
+    -- CPU States
     ---------------------------------------------------------------------------
 
+
     type cpu_state_t is
-(
-    STATE_RESET,
-    FETCH,
-    DECODE,
-    EXECUTE,
-    WRITE_BACK,
-    STATE_HALTED
-);
+    (
+        STATE_RESET,
+        FETCH,
+        DECODE,
+        EXECUTE,
+        WRITE_BACK,
+        STATE_HALTED
+    );
+
 
 
     ---------------------------------------------------------------------------
     -- ALU Operations
     ---------------------------------------------------------------------------
 
+
     type alu_operation_t is
     (
         ALU_ADD,
         ALU_SUB,
+
         ALU_INC,
         ALU_DEC,
 
@@ -119,9 +131,25 @@ package cpu_pkg is
     );
 
 
+
     ---------------------------------------------------------------------------
-    -- Memory Operation Type
+    -- Write Back Source
     ---------------------------------------------------------------------------
+
+
+    type write_back_source_t is
+    (
+        WB_ALU,
+        WB_MEMORY,
+        WB_IMMEDIATE
+    );
+
+
+
+    ---------------------------------------------------------------------------
+    -- Memory Operation
+    ---------------------------------------------------------------------------
+
 
     type memory_operation_t is
     (
@@ -131,15 +159,20 @@ package cpu_pkg is
     );
 
 
+
     ---------------------------------------------------------------------------
-    -- Processor Status Flags
+    -- Flags
     ---------------------------------------------------------------------------
+
 
     type flags_t is record
 
         zero     : std_logic;
+
         carry    : std_logic;
+
         negative : std_logic;
+
         overflow : std_logic;
 
     end record;
@@ -147,65 +180,72 @@ package cpu_pkg is
 
 
     ---------------------------------------------------------------------------
-    -- Instruction Opcodes
-    --
-    -- Opcode width: 5 bits
-    -- Total ISA instructions: 18
-    -- Remaining opcode values are reserved.
+    -- Opcode Allocation
     ---------------------------------------------------------------------------
 
 
-    -- Arithmetic Instructions
+    -- Arithmetic
 
     constant OP_ADD  : opcode_t := "00000";
+
     constant OP_SUB  : opcode_t := "00001";
+
     constant OP_INC  : opcode_t := "00010";
+
     constant OP_DEC  : opcode_t := "00011";
 
 
-    -- Logical Instructions
+
+    -- Logic
 
     constant OP_AND  : opcode_t := "00100";
+
     constant OP_OR   : opcode_t := "00101";
+
     constant OP_XOR  : opcode_t := "00110";
+
     constant OP_NOT  : opcode_t := "00111";
 
 
-    -- Shift Instructions
+
+    -- Shift
 
     constant OP_SHL  : opcode_t := "01000";
+
     constant OP_SHR  : opcode_t := "01001";
 
 
-    -- Memory Instructions
 
-    constant OP_LOAD : opcode_t := "01010";
-    constant OP_STORE: opcode_t := "01011";
+    -- Memory
+
+    constant OP_LOAD  : opcode_t := "01010";
+
+    constant OP_STORE : opcode_t := "01011";
 
 
-    -- Immediate Instructions
+
+    -- Immediate
 
     constant OP_MOVI : opcode_t := "01100";
 
 
-    -- Control Instructions
 
-    constant OP_JMP  : opcode_t := "01101";
-    constant OP_JZ   : opcode_t := "01110";
-    constant OP_JC   : opcode_t := "01111";
+    -- Control
+
+    constant OP_JMP : opcode_t := "01101";
+
+    constant OP_JZ  : opcode_t := "01110";
+
+    constant OP_JC  : opcode_t := "01111";
 
 
-    -- System Instructions
+
+    -- System
 
     constant OP_NOP  : opcode_t := "10000";
+
     constant OP_HALT : opcode_t := "10001";
 
-
-    ---------------------------------------------------------------------------
-    -- Reserved Opcode Range
-    ---------------------------------------------------------------------------
-
-    -- 10010 - 11111 reserved for future ISA extensions.
 
 
 
@@ -221,6 +261,23 @@ package cpu_pkg is
     return instruction_format_t;
 
 
+
+    function opcode_to_alu_operation
+    (
+        opcode : opcode_t
+    )
+    return alu_operation_t;
+
+
+
+    function opcode_to_write_back_source
+    (
+        opcode : opcode_t
+    )
+    return write_back_source_t;
+
+
+
     function is_valid_opcode
     (
         opcode : opcode_t
@@ -228,16 +285,22 @@ package cpu_pkg is
     return boolean;
 
 
+
 end package cpu_pkg;
+
+
+
 
 
 
 package body cpu_pkg is
 
 
+
     ---------------------------------------------------------------------------
-    -- Determine Instruction Format From Opcode
+    -- Instruction Format Decoder
     ---------------------------------------------------------------------------
+
 
     function opcode_to_format
     (
@@ -247,55 +310,204 @@ package body cpu_pkg is
 
     begin
 
+
         case opcode is
 
-            when OP_ADD  |
-                 OP_SUB  |
-                 OP_INC  |
-                 OP_DEC  |
-                 OP_AND  |
-                 OP_OR   |
-                 OP_XOR  |
-                 OP_NOT  |
-                 OP_SHL  |
-                 OP_SHR  =>
+
+            when OP_ADD |
+                 OP_SUB |
+                 OP_INC |
+                 OP_DEC |
+                 OP_AND |
+                 OP_OR  |
+                 OP_XOR |
+                 OP_NOT |
+                 OP_SHL |
+                 OP_SHR =>
+
 
                 return R_TYPE;
 
 
+
             when OP_LOAD |
-                 OP_STORE|
+                 OP_STORE |
                  OP_MOVI =>
+
 
                 return I_TYPE;
 
 
-            when OP_JMP  |
-                 OP_JZ   |
-                 OP_JC   =>
+
+            when OP_JMP |
+                 OP_JZ |
+                 OP_JC =>
+
 
                 return J_TYPE;
 
 
-            when OP_NOP  |
-                 OP_HALT =>
-
-                return S_TYPE;
-
 
             when others =>
 
+
                 return S_TYPE;
 
+
+
         end case;
+
 
     end function;
 
 
 
+
     ---------------------------------------------------------------------------
-    -- Validate Opcode
+    -- ALU Operation Decoder
     ---------------------------------------------------------------------------
+
+
+    function opcode_to_alu_operation
+    (
+        opcode : opcode_t
+    )
+    return alu_operation_t is
+
+    begin
+
+
+        case opcode is
+
+
+            when OP_ADD =>
+
+                return ALU_ADD;
+
+
+            when OP_SUB =>
+
+                return ALU_SUB;
+
+
+            when OP_INC =>
+
+                return ALU_INC;
+
+
+            when OP_DEC =>
+
+                return ALU_DEC;
+
+
+            when OP_AND =>
+
+                return ALU_AND;
+
+
+            when OP_OR =>
+
+                return ALU_OR;
+
+
+            when OP_XOR =>
+
+                return ALU_XOR;
+
+
+            when OP_NOT =>
+
+                return ALU_NOT;
+
+
+            when OP_SHL =>
+
+                return ALU_SHL;
+
+
+            when OP_SHR =>
+
+                return ALU_SHR;
+
+
+
+            when others =>
+
+                return ALU_PASS;
+
+
+        end case;
+
+
+    end function;
+
+
+
+
+
+    ---------------------------------------------------------------------------
+    -- Write Back Decoder
+    ---------------------------------------------------------------------------
+
+
+    function opcode_to_write_back_source
+    (
+        opcode : opcode_t
+    )
+    return write_back_source_t is
+
+
+    begin
+
+
+        case opcode is
+
+
+            when OP_MOVI =>
+
+                return WB_IMMEDIATE;
+
+
+
+            when OP_LOAD =>
+
+                return WB_MEMORY;
+
+
+
+            when OP_ADD |
+                 OP_SUB |
+                 OP_INC |
+                 OP_DEC |
+                 OP_AND |
+                 OP_OR  |
+                 OP_XOR |
+                 OP_NOT |
+                 OP_SHL |
+                 OP_SHR =>
+
+                return WB_ALU;
+
+
+
+            when others =>
+
+                return WB_ALU;
+
+
+        end case;
+
+
+    end function;
+
+
+
+
+
+    ---------------------------------------------------------------------------
+    -- Opcode Validation
+    ---------------------------------------------------------------------------
+
 
     function is_valid_opcode
     (
@@ -303,9 +515,12 @@ package body cpu_pkg is
     )
     return boolean is
 
+
     begin
 
+
         case opcode is
+
 
             when OP_ADD  |
                  OP_SUB  |
@@ -326,16 +541,21 @@ package body cpu_pkg is
                  OP_NOP  |
                  OP_HALT =>
 
+
                 return true;
+
 
 
             when others =>
 
                 return false;
 
+
         end case;
 
+
     end function;
+
 
 
 end package body cpu_pkg;
