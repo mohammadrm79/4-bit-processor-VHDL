@@ -334,6 +334,32 @@ Future ISA revisions may allocate unused opcode values without modifying existin
 
 ---
 
+
+
+# DD-013 — Hierarchical RTL Organization
+
+**Status:** Frozen
+
+---
+
+## Decision
+
+The RTL implementation shall follow a hierarchical directory organization based on functional hardware domains.
+
+The RTL source code shall be organized into the following modules:
+
+- `common` — Shared reusable hardware components
+- `datapath` — Data processing components
+- `control` — Instruction decoding and processor control logic
+- `memory` — Instruction and data memory modules
+- `core` — CPU integration logic
+- `top` — System-level integration
+
+Shared definitions, types, constants, opcode declarations, and utility functions shall be centralized in a single VHDL package
+
+
+---
+
 # Decision History
 
 | Decision ID | Status | Title |
@@ -350,3 +376,4 @@ Future ISA revisions may allocate unused opcode values without modifying existin
 | DD-010 | Frozen | Vendor-Independent RTL |
 | DD-011 | Frozen | Multiple Instruction Formats |
 | DD-012 | Frozen | Initial Opcode Allocation |
+| DD-013 | Frozen | Hierarchical RTL Organization |
