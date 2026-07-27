@@ -1,0 +1,15 @@
+LIBRARY IEEE;
+USE IEEE.STD_LOGIC_1164.ALL;
+
+ENTITY AND_GATE IS
+    PORT (
+        a : IN STD_LOGIC;
+        b : IN STD_LOGIC;
+        y : OUT STD_LOGIC
+    );
+END ENTITY AND_GATE;
+
+ARCHITECTURE behaviral OF AND_GATE IS
+BEGIN
+    y <= a AND b;
+END ARCHITECTURE behaviral;

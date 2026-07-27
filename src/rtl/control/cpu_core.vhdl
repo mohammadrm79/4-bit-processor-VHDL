@@ -1,415 +1,342 @@
 -- ============================================================================
 -- Project      : RISC-4 Educational CPU
 -- File         : cpu_core.vhdl
--- Description  : CPU Core Top-Level Integration
 --
--- Version      : 2.0.0
+-- Version      : 3.0.0
 -- Description  :
---   Datapath integration
---
+--   Three-register datapath
+--   R-Type format:
+--     RD  = instruction(10:8)
+--     RS1 = instruction(7:5)
+--     RS2 = instruction(4:2)
 -- ============================================================================
 
+LIBRARY ieee;
 
-library ieee;
+USE ieee.std_logic_1164.ALL;
+USE ieee.numeric_std.ALL;
 
-use ieee.std_logic_1164.all;
+USE work.cpu_pkg.ALL;
 
-use work.cpu_pkg.all;
+ENTITY cpu_core IS
 
+    PORT (
+        clk : IN STD_LOGIC;
+        reset : IN STD_LOGIC;
 
+        halted : OUT STD_LOGIC;
 
-entity cpu_core is
-
-    port
-    (
-        clk   : in std_logic;
-        reset : in std_logic;
-
-        halted : out std_logic
-
+        debug_r0 : OUT data_word_t;
+        debug_r1 : OUT data_word_t;
+        debug_r2 : OUT data_word_t;
+        debug_r3 : OUT data_word_t
     );
 
-end entity cpu_core;
+END ENTITY cpu_core;
 
+ARCHITECTURE rtl OF cpu_core IS
 
+    SIGNAL pc_value : address_t;
 
-architecture rtl of cpu_core is
+    SIGNAL instruction_memory_data : instruction_t;
+    SIGNAL instruction : instruction_t;
 
-
-
-    ---------------------------------------------------------------------------
-    -- Instruction Path
-    ---------------------------------------------------------------------------
-
-    signal pc_value : address_t;
-
-    signal instruction_memory_data : instruction_t;
-
-    signal instruction : instruction_t;
-
-
-    signal opcode : opcode_t;
-
-
-    signal instruction_format : instruction_format_t;
-
-
-    signal register_a : register_index_t;
-
-    signal register_b : register_index_t;
-
-
-    signal immediate : std_logic_vector(7 downto 0);
-
-    signal jump_address : address_t;
-
-
+    SIGNAL opcode : opcode_t := OP_HALT;
 
     ---------------------------------------------------------------------------
-    -- Control Signals
+    -- Register indices
     ---------------------------------------------------------------------------
 
-    signal cpu_state : cpu_state_t;
+    SIGNAL destination_register : register_index_t;
+    SIGNAL source_register_a : register_index_t;
+    SIGNAL source_register_b : register_index_t;
 
+    SIGNAL immediate : STD_LOGIC_VECTOR(7 DOWNTO 0);
+    SIGNAL jump_address : address_t;
 
-    signal pc_enable : std_logic;
+    SIGNAL cpu_state : cpu_state_t;
 
-    signal pc_load : std_logic;
+    SIGNAL pc_enable : STD_LOGIC;
+    SIGNAL pc_load : STD_LOGIC;
+    SIGNAL ir_enable : STD_LOGIC;
 
+    SIGNAL register_write_enable : STD_LOGIC;
+    SIGNAL flags_write_enable : STD_LOGIC;
 
-    signal ir_enable : std_logic;
+    SIGNAL memory_write_enable : STD_LOGIC;
+    SIGNAL memory_read_enable : STD_LOGIC;
 
-
-    signal register_write_enable : std_logic;
-
-
-    signal flags_write_enable : std_logic;
-
-
-    signal memory_read_enable : std_logic;
-
-    signal memory_write_enable : std_logic;
-
-
-
-    signal alu_operation : alu_operation_t;
-
-
+    SIGNAL alu_operation : alu_operation_t;
+    SIGNAL write_back_source : write_back_source_t;
 
     ---------------------------------------------------------------------------
-    -- Register File Signals
+    -- Datapath
     ---------------------------------------------------------------------------
 
-    signal register_data_a : data_word_t;
+    SIGNAL register_data_a : data_word_t;
+    SIGNAL register_data_b : data_word_t;
 
-    signal register_data_b : data_word_t;
+    SIGNAL alu_result : data_word_t;
+    SIGNAL alu_result_registered : data_word_t;
+    SIGNAL alu_result_enable : STD_LOGIC;
+    SIGNAL alu_zero : STD_LOGIC;
+    SIGNAL alu_carry : STD_LOGIC;
+    SIGNAL alu_negative : STD_LOGIC;
+    SIGNAL alu_overflow : STD_LOGIC;
 
+    SIGNAL zero_flag : STD_LOGIC;
+    SIGNAL carry_flag : STD_LOGIC;
 
-    signal register_write_data : data_word_t;
+    SIGNAL memory_address : address_t;
+    SIGNAL memory_read_data : data_word_t;
 
+    SIGNAL register_write_data : data_word_t;
 
-
-    ---------------------------------------------------------------------------
-    -- ALU Signals
-    ---------------------------------------------------------------------------
-
-    signal alu_result : data_word_t;
-
-
-    signal alu_zero : std_logic;
-
-    signal alu_carry : std_logic;
-
-    signal alu_negative : std_logic;
-
-    signal alu_overflow : std_logic;
-
-
+BEGIN
 
     ---------------------------------------------------------------------------
-    -- Flags
+    -- PC
     ---------------------------------------------------------------------------
 
-    signal zero_flag : std_logic;
-
-    signal carry_flag : std_logic;
-
-
-
-begin
-
-
-
-    ---------------------------------------------------------------------------
-    -- Program Counter
-    ---------------------------------------------------------------------------
-
-    program_counter : entity work.pc
-
-    port map
-    (
-        clk => clk,
-
-        reset => reset,
-
-        enable => pc_enable,
-
-        load => pc_load,
-
-        next_address => jump_address,
-
-        pc_value => pc_value
-
-    );
-
-
+    program_counter : ENTITY work.pc
+        PORT MAP
+        (
+            clk => clk,
+            reset => reset,
+            enable => pc_enable,
+            load => pc_load,
+            next_address => jump_address,
+            pc_value => pc_value
+        );
 
     ---------------------------------------------------------------------------
     -- Instruction Memory
     ---------------------------------------------------------------------------
 
-    instruction_mem : entity work.instruction_memory
-
-    port map
-    (
-        address => pc_value,
-
-        instruction => instruction_memory_data
-
-    );
-
-
+    instruction_mem : ENTITY work.instruction_memory
+        PORT MAP
+        (
+            address => pc_value,
+            instruction => instruction_memory_data
+        );
 
     ---------------------------------------------------------------------------
     -- Instruction Register
     ---------------------------------------------------------------------------
 
-    instruction_reg : entity work.instruction_register
-
-    port map
-    (
-        clk => clk,
-
-        reset => reset,
-
-        enable => ir_enable,
-
-        instruction_in => instruction_memory_data,
-
-        instruction_out => instruction
-
-    );
-
-
+    instruction_reg : ENTITY work.instruction_register
+        PORT MAP
+        (
+            clk => clk,
+            reset => reset,
+            enable => ir_enable,
+            instruction_in => instruction_memory_data,
+            instruction_out => instruction
+        );
 
     ---------------------------------------------------------------------------
     -- Decoder
     ---------------------------------------------------------------------------
 
-    decoder : entity work.instruction_decoder
+    decoder : ENTITY work.instruction_decoder
+        PORT MAP
+        (
+            instruction => instruction,
 
-    port map
-    (
-        instruction => instruction,
+            opcode => opcode,
+            format => OPEN,
 
-        opcode => opcode,
+            register_a => destination_register,
+            source_a => source_register_a,
+            source_b => source_register_b,
 
-        format => instruction_format,
-
-        register_a => register_a,
-
-        register_b => register_b,
-
-        immediate => immediate,
-
-        address => jump_address
-
-    );
-
-
+            immediate => immediate,
+            address => jump_address
+        );
 
     ---------------------------------------------------------------------------
     -- Register File
     ---------------------------------------------------------------------------
 
-    registers : entity work.register_file
+    registers : ENTITY work.register_file
+        PORT MAP
+        (
+            clk => clk,
+            reset => reset,
 
-    port map
-    (
-        clk => clk,
+            write_enable => register_write_enable,
+            write_address => destination_register,
+            write_data => register_write_data,
 
-        reset => reset,
+            read_address_a => source_register_a,
+            read_address_b => source_register_b,
 
+            read_data_a => register_data_a,
+            read_data_b => register_data_b,
 
-        write_enable => register_write_enable,
-
-        write_address => register_a,
-
-        write_data => register_write_data,
-
-
-        read_address_a => register_a,
-
-        read_address_b => register_b,
-
-
-        read_data_a => register_data_a,
-
-        read_data_b => register_data_b
-
-    );
-
-
+            debug_r0 => debug_r0,
+            debug_r1 => debug_r1,
+            debug_r2 => debug_r2,
+            debug_r3 => debug_r3
+        );
 
     ---------------------------------------------------------------------------
     -- ALU
     ---------------------------------------------------------------------------
 
-    arithmetic_logic_unit : entity work.alu
+    arithmetic_logic_unit : ENTITY work.alu
+        PORT MAP
+        (
+            operand_a => register_data_a,
+            operand_b => register_data_b,
 
-    port map
-    (
-        operand_a => register_data_a,
+            operation => alu_operation,
 
-        operand_b => register_data_b,
+            result => alu_result,
 
+            zero => alu_zero,
+            carry => alu_carry,
+            negative => alu_negative,
+            overflow => alu_overflow
+        );
+    PROCESS (alu_result, register_data_a, register_data_b, alu_operation)
+    BEGIN
+        REPORT
+            "ALU_MONITOR A="
+            & INTEGER'image(to_integer(unsigned(register_data_a)))
+            & " B="
+            & INTEGER'image(to_integer(unsigned(register_data_b)))
+            & " RESULT="
+            & INTEGER'image(to_integer(unsigned(alu_result)))
+            SEVERITY NOTE;
+    END PROCESS;
 
-        operation => alu_operation,
+    alu_result_reg : ENTITY work.alu_result_register
+        PORT MAP
+        (
+            clk => clk,
+            reset => reset,
+            enable => alu_result_enable,
 
-
-        result => alu_result,
-
-
-        zero => alu_zero,
-
-        carry => alu_carry,
-
-        negative => alu_negative,
-
-        overflow => alu_overflow
-
-    );
-
-
-
+            data_in => alu_result,
+            data_out => alu_result_registered
+        );
     ---------------------------------------------------------------------------
-    -- Flags Register
-    ---------------------------------------------------------------------------
-
-    flags : entity work.flags_register
-
-    port map
-    (
-        clk => clk,
-
-        reset => reset,
-
-        enable => flags_write_enable,
-
-
-        zero_in => alu_zero,
-
-        carry_in => alu_carry,
-
-        negative_in => alu_negative,
-
-        overflow_in => alu_overflow,
-
-
-        zero_out => zero_flag,
-
-        carry_out => carry_flag,
-
-
-        negative_out => open,
-
-        overflow_out => open
-
-    );
-
-
-
-    ---------------------------------------------------------------------------
-    -- Write Back Selection
+    -- Flags
     ---------------------------------------------------------------------------
 
-    process(opcode, alu_result, immediate)
+    flags : ENTITY work.flags_register
+        PORT MAP
+        (
+            clk => clk,
+            reset => reset,
+            enable => flags_write_enable,
 
-    begin
+            zero_in => alu_zero,
+            carry_in => alu_carry,
+            negative_in => alu_negative,
+            overflow_in => alu_overflow,
 
+            zero_out => zero_flag,
+            carry_out => carry_flag,
 
-        case opcode is
-
-
-            when OP_MOVI =>
-
-                register_write_data <= immediate(3 downto 0);
-
-
-
-            when others =>
-
-                register_write_data <= alu_result;
-
-
-
-        end case;
-
-
-    end process;
-
-
+            negative_out => OPEN,
+            overflow_out => OPEN
+        );
 
     ---------------------------------------------------------------------------
-    -- Control Unit
+    -- Data Memory
     ---------------------------------------------------------------------------
 
-    control : entity work.control_fsm
+    memory_address <= "0000000" & register_data_b;
 
-    port map
-    (
-        clk => clk,
+    data_mem : ENTITY work.data_memory
+        PORT MAP
+        (
+            clk => clk,
+            reset => reset,
 
-        reset => reset,
+            address => memory_address,
 
+            write_enable => memory_write_enable,
 
-        opcode => opcode,
+            write_data => register_data_a,
 
+            read_data => memory_read_data
+        );
 
-        zero_flag => zero_flag,
+    ---------------------------------------------------------------------------
+    -- Write Back
+    ---------------------------------------------------------------------------
 
-        carry_flag => carry_flag,
+    PROCESS (
+        write_back_source,
+        alu_result,
+        immediate,
+        memory_read_data
+        )
 
+        VARIABLE wb_value : data_word_t;
 
-        state_out => cpu_state,
+    BEGIN
 
+        CASE write_back_source IS
 
-        pc_enable => pc_enable,
+            WHEN WB_ALU =>
+                wb_value := alu_result_registered;
 
-        pc_load => pc_load,
+            WHEN WB_IMMEDIATE =>
+                wb_value := immediate(3 DOWNTO 0);
 
+            WHEN WB_MEMORY =>
+                wb_value := memory_read_data;
 
-        ir_enable => ir_enable,
+            WHEN OTHERS =>
+                wb_value := (OTHERS => '0');
 
+        END CASE;
 
-        register_write_enable => register_write_enable,
+        REPORT
+            "WB: source="
+            & write_back_source_t'image(write_back_source)
+            & " wb="
+            & INTEGER'image(to_integer(unsigned(wb_value)))
+            SEVERITY NOTE;
 
+        register_write_data <= wb_value;
+    END PROCESS;
 
-        flags_write_enable => flags_write_enable,
+    ---------------------------------------------------------------------------
+    -- Control FSM
+    ---------------------------------------------------------------------------
 
+    control : ENTITY work.control_fsm
+        PORT MAP
+        (
+            clk => clk,
+            reset => reset,
+            alu_result_enable => alu_result_enable,
+            opcode => opcode,
 
-        memory_read_enable => memory_read_enable,
+            zero_flag => zero_flag,
+            carry_flag => carry_flag,
 
-        memory_write_enable => memory_write_enable,
+            state_out => cpu_state,
 
+            pc_enable => pc_enable,
+            pc_load => pc_load,
+            ir_enable => ir_enable,
 
-        alu_operation => alu_operation,
+            register_write_enable => register_write_enable,
+            flags_write_enable => flags_write_enable,
 
+            memory_read_enable => memory_read_enable,
+            memory_write_enable => memory_write_enable,
 
-        halted => halted
+            alu_operation => alu_operation,
+            write_back_source => write_back_source,
 
-    );
+            halted => halted
+        );
 
-
-
-end architecture rtl;
+END ARCHITECTURE rtl;

@@ -1,98 +1,66 @@
 -- ============================================================================
 -- Project      : RISC-4 Educational CPU
 -- File         : instruction_register.vhdl
--- Description  : Instruction Register
 --
--- Version      : 1.0.0
--- Language     : VHDL-2008
---
--- Implements:
---   - DD-002 : 16-bit Fixed-Length Instructions
---   - DD-005 : Multi-Cycle Execution
---   - DD-008 : Single Clock Domain
---   - DD-009 : Synchronous Active-High Reset
+-- Version      : 1.1.0
+-- Description  :
+--   Fixed instruction stability during decode/execute
+--   Added deterministic initialization
+--   Preserved synchronous reset behavior
 --
 -- ============================================================================
 
+LIBRARY ieee;
 
-library ieee;
+USE ieee.std_logic_1164.ALL;
 
-use ieee.std_logic_1164.all;
+USE work.cpu_pkg.ALL;
 
-use work.cpu_pkg.all;
+ENTITY instruction_register IS
 
+    PORT (
+        clk : IN STD_LOGIC;
 
+        reset : IN STD_LOGIC;
 
-entity instruction_register is
+        enable : IN STD_LOGIC;
 
-    port
-    (
-        clk     : in std_logic;
-        reset   : in std_logic;
+        instruction_in : IN instruction_t;
 
-        enable  : in std_logic;
-
-        instruction_in  : in instruction_t;
-        instruction_out : out instruction_t
-
+        instruction_out : OUT instruction_t
     );
 
-end entity instruction_register;
+END ENTITY instruction_register;
 
+ARCHITECTURE rtl OF instruction_register IS
 
+    SIGNAL instruction_reg : instruction_t :=
+                                             (OTHERS => '0');
 
-architecture rtl of instruction_register is
+BEGIN
 
+    PROCESS (clk)
 
-    signal instruction_reg : instruction_t :=
-    (others => '0');
+    BEGIN
 
+        IF rising_edge(clk) THEN
 
+            IF reset = '1' THEN
 
-begin
+                instruction_reg <=
+                                  (OTHERS => '0');
 
+            ELSIF enable = '1' THEN
 
-    ---------------------------------------------------------------------------
-    -- Instruction Register Storage
-    ---------------------------------------------------------------------------
+                instruction_reg <=
+                                  instruction_in;
 
-    process(clk)
+            END IF;
 
-    begin
+        END IF;
 
-        if rising_edge(clk) then
-
-
-            if reset = '1' then
-
-
-                instruction_reg <= (others => '0');
-
-
-
-            elsif enable = '1' then
-
-
-                instruction_reg <= instruction_in;
-
-
-
-            end if;
-
-
-        end if;
-
-
-    end process;
-
-
-
-    ---------------------------------------------------------------------------
-    -- Output Assignment
-    ---------------------------------------------------------------------------
+    END PROCESS;
 
     instruction_out <= instruction_reg;
 
-
-
-end architecture rtl;
+END ARCHITECTURE rtl;

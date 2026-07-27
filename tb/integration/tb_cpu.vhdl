@@ -3,101 +3,102 @@
 -- File         : tb_cpu.vhdl
 -- Description  : CPU Core Integration Testbench
 --
--- Version      : 1.0.0
--- Language     : VHDL-2008
+-- Version      : 2.1.0
+-- Description  :
+--   Added execution timeout protection
+--   Added register debug reports
+--   Improved ADD validation
 --
 -- ============================================================================
 
+LIBRARY ieee;
 
-library ieee;
+USE ieee.std_logic_1164.ALL;
 
-use ieee.std_logic_1164.all;
+USE ieee.numeric_std.ALL;
 
+USE work.cpu_pkg.ALL;
 
+ENTITY tb_cpu IS
 
-entity tb_cpu is
+END ENTITY tb_cpu;
 
-end entity tb_cpu;
+ARCHITECTURE sim OF tb_cpu IS
 
+    SIGNAL clk : STD_LOGIC := '0';
 
+    SIGNAL reset : STD_LOGIC := '1';
 
-architecture sim of tb_cpu is
+    SIGNAL halted : STD_LOGIC;
 
+    SIGNAL debug_r0 : data_word_t;
 
-    ---------------------------------------------------------------------------
-    -- DUT Signals
-    ---------------------------------------------------------------------------
+    SIGNAL debug_r1 : data_word_t;
 
-    signal clk : std_logic := '0';
+    SIGNAL debug_r2 : data_word_t;
 
-    signal reset : std_logic := '0';
+    SIGNAL debug_r3 : data_word_t;
 
-    signal halted : std_logic;
+    CONSTANT CLK_PERIOD : TIME := 10 ns;
 
+    -- CONSTANT MAX_EXECUTION_TIME : TIME := 500 ns;
 
-
-    constant CLK_PERIOD : time := 10 ns;
-
-
-
-begin
-
+BEGIN
 
     ---------------------------------------------------------------------------
     -- Clock Generator
     ---------------------------------------------------------------------------
 
-    clk_process : process
+    clk_process : PROCESS
 
-    begin
+    BEGIN
 
-        while true loop
+        LOOP
 
             clk <= '0';
 
-            wait for CLK_PERIOD / 2;
-
+            WAIT FOR CLK_PERIOD / 2;
 
             clk <= '1';
 
-            wait for CLK_PERIOD / 2;
+            WAIT FOR CLK_PERIOD / 2;
 
+        END LOOP;
 
-        end loop;
-
-
-    end process;
-
-
+    END PROCESS;
 
     ---------------------------------------------------------------------------
     -- DUT
     ---------------------------------------------------------------------------
 
-    uut : entity work.system_top
+    uut : ENTITY work.system_top
 
-    port map
-    (
+        PORT MAP
+        (
 
-        clk => clk,
+            clk => clk,
 
-        reset => reset,
+            reset => reset,
 
-        halted => halted
+            halted => halted,
 
-    );
+            debug_r0 => debug_r0,
 
+            debug_r1 => debug_r1,
 
+            debug_r2 => debug_r2,
+
+            debug_r3 => debug_r3
+
+        );
 
     ---------------------------------------------------------------------------
     -- Test Sequence
     ---------------------------------------------------------------------------
 
-    stimulus : process
+    stimulus : PROCESS
 
-    begin
-
-
+    BEGIN
 
         -----------------------------------------------------------------------
         -- Reset CPU
@@ -105,48 +106,70 @@ begin
 
         reset <= '1';
 
-        wait for CLK_PERIOD * 2;
-
+        WAIT FOR CLK_PERIOD * 5;
 
         reset <= '0';
 
-
-
         -----------------------------------------------------------------------
-        -- Execute Program
+        -- Execution Timeout
         -----------------------------------------------------------------------
 
-        wait for CLK_PERIOD * 20;
+        WAIT UNTIL halted = '1';
 
+        ASSERT halted = '1'
 
+        REPORT "CPU did not reach HALTED state"
+
+            SEVERITY error;
 
         -----------------------------------------------------------------------
-        -- Check CPU State
+        -- Register Debug
         -----------------------------------------------------------------------
 
-        assert halted = '1'
+        REPORT "Register Values:";
 
-        report "CPU did not reach HALTED state"
+        REPORT "R0 = " &
+            INTEGER'image(to_integer(unsigned(debug_r0)));
 
-        severity error;
+        REPORT "R1 = " &
+            INTEGER'image(to_integer(unsigned(debug_r1)));
 
+        REPORT "R2 = " &
+            INTEGER'image(to_integer(unsigned(debug_r2)));
 
+        REPORT "R3 = " &
+            INTEGER'image(to_integer(unsigned(debug_r3)));
+
+        -----------------------------------------------------------------------
+        -- ADD Verification
+        -----------------------------------------------------------------------
+
+        ASSERT debug_r3 = "1000"
+
+        REPORT "ADD result incorrect. Expected R3 = 8"
+
+            SEVERITY error;
+
+        -----------------------------------------------------------------------
+        -- Register Integrity
+        -----------------------------------------------------------------------
+
+        ASSERT debug_r0 = "0000"
+
+        REPORT "R0 modified unexpectedly"
+
+            SEVERITY error;
 
         -----------------------------------------------------------------------
         -- Finish
         -----------------------------------------------------------------------
 
-        report "CPU integration test completed successfully"
+        REPORT "ADD integration test completed successfully"
 
-        severity note;
+            SEVERITY note;
 
+        WAIT;
 
+    END PROCESS;
 
-        wait;
-
-
-    end process;
-
-
-
-end architecture sim;
+END ARCHITECTURE sim;

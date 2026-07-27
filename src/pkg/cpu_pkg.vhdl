@@ -9,553 +9,406 @@
 --
 -- ============================================================================
 
+LIBRARY ieee;
 
-library ieee;
+USE ieee.std_logic_1164.ALL;
+USE ieee.numeric_std.ALL;
 
-use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
-
-
-
-package cpu_pkg is
-
+PACKAGE cpu_pkg IS
 
     ---------------------------------------------------------------------------
     -- CPU Architectural Constants
     ---------------------------------------------------------------------------
 
-    constant DATA_WIDTH              : natural := 4;
+    CONSTANT DATA_WIDTH : NATURAL := 4;
 
-    constant INSTRUCTION_WIDTH       : natural := 16;
+    CONSTANT INSTRUCTION_WIDTH : NATURAL := 16;
 
-    constant REGISTER_COUNT          : natural := 8;
+    CONSTANT REGISTER_COUNT : NATURAL := 8;
 
-    constant REGISTER_ADDRESS_WIDTH  : natural := 3;
+    CONSTANT REGISTER_ADDRESS_WIDTH : NATURAL := 3;
 
-    constant OPCODE_WIDTH            : natural := 5;
+    CONSTANT OPCODE_WIDTH : NATURAL := 5;
 
-    constant ADDRESS_WIDTH           : natural := 11;
+    CONSTANT ADDRESS_WIDTH : NATURAL := 11;
 
-
-    constant RESET_VECTOR :
-        std_logic_vector(ADDRESS_WIDTH-1 downto 0)
-        := (others => '0');
-
-
+    CONSTANT RESET_VECTOR :
+    STD_LOGIC_VECTOR(ADDRESS_WIDTH - 1 DOWNTO 0)
+     := (OTHERS => '0');
 
     ---------------------------------------------------------------------------
     -- Common Types
     ---------------------------------------------------------------------------
 
+    SUBTYPE data_word_t IS
+    STD_LOGIC_VECTOR(DATA_WIDTH - 1 DOWNTO 0);
 
-    subtype data_word_t is
-        std_logic_vector(DATA_WIDTH-1 downto 0);
+    SUBTYPE instruction_t IS
+    STD_LOGIC_VECTOR(INSTRUCTION_WIDTH - 1 DOWNTO 0);
 
+    SUBTYPE opcode_t IS
+    STD_LOGIC_VECTOR(OPCODE_WIDTH - 1 DOWNTO 0);
 
+    SUBTYPE register_index_t IS
+    STD_LOGIC_VECTOR(REGISTER_ADDRESS_WIDTH - 1 DOWNTO 0);
 
-    subtype instruction_t is
-        std_logic_vector(INSTRUCTION_WIDTH-1 downto 0);
-
-
-
-    subtype opcode_t is
-        std_logic_vector(OPCODE_WIDTH-1 downto 0);
-
-
-
-    subtype register_index_t is
-        std_logic_vector(REGISTER_ADDRESS_WIDTH-1 downto 0);
-
-
-
-    subtype address_t is
-        std_logic_vector(ADDRESS_WIDTH-1 downto 0);
-
-
-
+    SUBTYPE address_t IS
+    STD_LOGIC_VECTOR(ADDRESS_WIDTH - 1 DOWNTO 0);
 
     ---------------------------------------------------------------------------
     -- Instruction Formats
     ---------------------------------------------------------------------------
 
-
-    type instruction_format_t is
+    TYPE instruction_format_t IS
     (
-        R_TYPE,
-        I_TYPE,
-        J_TYPE,
-        S_TYPE
+    R_TYPE,
+    I_TYPE,
+    J_TYPE,
+    S_TYPE
     );
-
-
 
     ---------------------------------------------------------------------------
     -- CPU States
     ---------------------------------------------------------------------------
 
-
-    type cpu_state_t is
+    TYPE cpu_state_t IS
     (
-        STATE_RESET,
-        FETCH,
-        DECODE,
-        EXECUTE,
-        WRITE_BACK,
-        STATE_HALTED
+    STATE_RESET,
+    FETCH,
+    DECODE,
+    EXECUTE,
+    WRITE_BACK,
+    STATE_HALTED
     );
-
-
 
     ---------------------------------------------------------------------------
     -- ALU Operations
     ---------------------------------------------------------------------------
 
-
-    type alu_operation_t is
+    TYPE alu_operation_t IS
     (
-        ALU_ADD,
-        ALU_SUB,
+    ALU_ADD,
+    ALU_SUB,
 
-        ALU_INC,
-        ALU_DEC,
+    ALU_INC,
+    ALU_DEC,
 
-        ALU_AND,
-        ALU_OR,
-        ALU_XOR,
-        ALU_NOT,
+    ALU_AND,
+    ALU_OR,
+    ALU_XOR,
+    ALU_NOT,
 
-        ALU_SHL,
-        ALU_SHR,
+    ALU_SHL,
+    ALU_SHR,
 
-        ALU_PASS
+    ALU_PASS
     );
-
-
 
     ---------------------------------------------------------------------------
     -- Write Back Source
     ---------------------------------------------------------------------------
 
-
-    type write_back_source_t is
+    TYPE write_back_source_t IS
     (
-        WB_ALU,
-        WB_MEMORY,
-        WB_IMMEDIATE
+    WB_ALU,
+    WB_MEMORY,
+    WB_IMMEDIATE
     );
-
-
 
     ---------------------------------------------------------------------------
     -- Memory Operation
     ---------------------------------------------------------------------------
 
-
-    type memory_operation_t is
+    TYPE memory_operation_t IS
     (
-        MEM_NONE,
-        MEM_READ,
-        MEM_WRITE
+    MEM_NONE,
+    MEM_READ,
+    MEM_WRITE
     );
-
-
 
     ---------------------------------------------------------------------------
     -- Flags
     ---------------------------------------------------------------------------
 
+    TYPE flags_t IS RECORD
 
-    type flags_t is record
+        zero : STD_LOGIC;
 
-        zero     : std_logic;
+        carry : STD_LOGIC;
 
-        carry    : std_logic;
+        negative : STD_LOGIC;
 
-        negative : std_logic;
+        overflow : STD_LOGIC;
 
-        overflow : std_logic;
-
-    end record;
-
-
+    END RECORD;
 
     ---------------------------------------------------------------------------
     -- Opcode Allocation
     ---------------------------------------------------------------------------
 
-
     -- Arithmetic
 
-    constant OP_ADD  : opcode_t := "00000";
+    CONSTANT OP_ADD : opcode_t := "00000";
 
-    constant OP_SUB  : opcode_t := "00001";
+    CONSTANT OP_SUB : opcode_t := "00001";
 
-    constant OP_INC  : opcode_t := "00010";
+    CONSTANT OP_INC : opcode_t := "00010";
 
-    constant OP_DEC  : opcode_t := "00011";
-
-
+    CONSTANT OP_DEC : opcode_t := "00011";
 
     -- Logic
 
-    constant OP_AND  : opcode_t := "00100";
+    CONSTANT OP_AND : opcode_t := "00100";
 
-    constant OP_OR   : opcode_t := "00101";
+    CONSTANT OP_OR : opcode_t := "00101";
 
-    constant OP_XOR  : opcode_t := "00110";
+    CONSTANT OP_XOR : opcode_t := "00110";
 
-    constant OP_NOT  : opcode_t := "00111";
-
-
+    CONSTANT OP_NOT : opcode_t := "00111";
 
     -- Shift
 
-    constant OP_SHL  : opcode_t := "01000";
+    CONSTANT OP_SHL : opcode_t := "01000";
 
-    constant OP_SHR  : opcode_t := "01001";
-
-
+    CONSTANT OP_SHR : opcode_t := "01001";
 
     -- Memory
 
-    constant OP_LOAD  : opcode_t := "01010";
+    CONSTANT OP_LOAD : opcode_t := "01010";
 
-    constant OP_STORE : opcode_t := "01011";
-
-
+    CONSTANT OP_STORE : opcode_t := "01011";
 
     -- Immediate
 
-    constant OP_MOVI : opcode_t := "01100";
-
-
+    CONSTANT OP_MOVI : opcode_t := "01100";
 
     -- Control
 
-    constant OP_JMP : opcode_t := "01101";
+    CONSTANT OP_JMP : opcode_t := "01101";
 
-    constant OP_JZ  : opcode_t := "01110";
+    CONSTANT OP_JZ : opcode_t := "01110";
 
-    constant OP_JC  : opcode_t := "01111";
-
-
+    CONSTANT OP_JC : opcode_t := "01111";
 
     -- System
 
-    constant OP_NOP  : opcode_t := "10000";
+    CONSTANT OP_NOP : opcode_t := "10000";
 
-    constant OP_HALT : opcode_t := "10001";
-
-
-
+    CONSTANT OP_HALT : opcode_t := "10001";
 
     ---------------------------------------------------------------------------
     -- Helper Functions
     ---------------------------------------------------------------------------
 
-
-    function opcode_to_format
-    (
+    FUNCTION opcode_to_format(
         opcode : opcode_t
-    )
-    return instruction_format_t;
+    ) RETURN instruction_format_t;
 
-
-
-    function opcode_to_alu_operation
-    (
+    FUNCTION opcode_to_alu_operation(
         opcode : opcode_t
-    )
-    return alu_operation_t;
+    ) RETURN alu_operation_t;
 
-
-
-    function opcode_to_write_back_source
-    (
+    FUNCTION opcode_to_write_back_source(
         opcode : opcode_t
-    )
-    return write_back_source_t;
+    ) RETURN write_back_source_t;
 
-
-
-    function is_valid_opcode
-    (
+    FUNCTION is_valid_opcode(
         opcode : opcode_t
-    )
-    return boolean;
+    ) RETURN BOOLEAN;
 
+END PACKAGE cpu_pkg;
 
-
-end package cpu_pkg;
-
-
-
-
-
-
-package body cpu_pkg is
-
-
+PACKAGE BODY cpu_pkg IS
 
     ---------------------------------------------------------------------------
     -- Instruction Format Decoder
     ---------------------------------------------------------------------------
 
-
-    function opcode_to_format
-    (
+    FUNCTION opcode_to_format(
         opcode : opcode_t
     )
-    return instruction_format_t is
+        RETURN instruction_format_t IS
 
-    begin
+    BEGIN
 
+        CASE opcode IS
 
-        case opcode is
+            WHEN OP_ADD |
+                OP_SUB |
+                OP_INC |
+                OP_DEC |
+                OP_AND |
+                OP_OR |
+                OP_XOR |
+                OP_NOT |
+                OP_SHL |
+                OP_SHR =>
 
+                RETURN R_TYPE;
 
-            when OP_ADD |
-                 OP_SUB |
-                 OP_INC |
-                 OP_DEC |
-                 OP_AND |
-                 OP_OR  |
-                 OP_XOR |
-                 OP_NOT |
-                 OP_SHL |
-                 OP_SHR =>
+            WHEN OP_LOAD |
+                OP_STORE |
+                OP_MOVI =>
 
+                RETURN I_TYPE;
 
-                return R_TYPE;
+            WHEN OP_JMP |
+                OP_JZ |
+                OP_JC =>
 
+                RETURN J_TYPE;
 
+            WHEN OTHERS =>
 
-            when OP_LOAD |
-                 OP_STORE |
-                 OP_MOVI =>
+                RETURN S_TYPE;
 
+        END CASE;
 
-                return I_TYPE;
-
-
-
-            when OP_JMP |
-                 OP_JZ |
-                 OP_JC =>
-
-
-                return J_TYPE;
-
-
-
-            when others =>
-
-
-                return S_TYPE;
-
-
-
-        end case;
-
-
-    end function;
-
-
-
+    END FUNCTION;
 
     ---------------------------------------------------------------------------
     -- ALU Operation Decoder
     ---------------------------------------------------------------------------
 
-
-    function opcode_to_alu_operation
-    (
+    FUNCTION opcode_to_alu_operation(
         opcode : opcode_t
     )
-    return alu_operation_t is
+        RETURN alu_operation_t IS
 
-    begin
+    BEGIN
 
+        CASE opcode IS
 
-        case opcode is
+            WHEN OP_ADD =>
 
+                RETURN ALU_ADD;
 
-            when OP_ADD =>
+            WHEN OP_SUB =>
 
-                return ALU_ADD;
+                RETURN ALU_SUB;
 
+            WHEN OP_INC =>
 
-            when OP_SUB =>
+                RETURN ALU_INC;
 
-                return ALU_SUB;
+            WHEN OP_DEC =>
 
+                RETURN ALU_DEC;
 
-            when OP_INC =>
+            WHEN OP_AND =>
 
-                return ALU_INC;
+                RETURN ALU_AND;
 
+            WHEN OP_OR =>
 
-            when OP_DEC =>
+                RETURN ALU_OR;
 
-                return ALU_DEC;
+            WHEN OP_XOR =>
 
+                RETURN ALU_XOR;
 
-            when OP_AND =>
+            WHEN OP_NOT =>
 
-                return ALU_AND;
+                RETURN ALU_NOT;
 
+            WHEN OP_SHL =>
 
-            when OP_OR =>
+                RETURN ALU_SHL;
 
-                return ALU_OR;
+            WHEN OP_SHR =>
 
+                RETURN ALU_SHR;
 
-            when OP_XOR =>
+            WHEN OTHERS =>
 
-                return ALU_XOR;
+                RETURN ALU_PASS;
 
+        END CASE;
 
-            when OP_NOT =>
-
-                return ALU_NOT;
-
-
-            when OP_SHL =>
-
-                return ALU_SHL;
-
-
-            when OP_SHR =>
-
-                return ALU_SHR;
-
-
-
-            when others =>
-
-                return ALU_PASS;
-
-
-        end case;
-
-
-    end function;
-
-
-
-
+    END FUNCTION;
 
     ---------------------------------------------------------------------------
     -- Write Back Decoder
     ---------------------------------------------------------------------------
 
-
-    function opcode_to_write_back_source
-    (
+    FUNCTION opcode_to_write_back_source(
         opcode : opcode_t
     )
-    return write_back_source_t is
+        RETURN write_back_source_t IS
 
+    BEGIN
 
-    begin
+        CASE opcode IS
 
+            WHEN OP_MOVI =>
 
-        case opcode is
+                RETURN WB_IMMEDIATE;
 
+            WHEN OP_LOAD =>
 
-            when OP_MOVI =>
+                RETURN WB_MEMORY;
 
-                return WB_IMMEDIATE;
+            WHEN OP_ADD |
+                OP_SUB |
+                OP_INC |
+                OP_DEC |
+                OP_AND |
+                OP_OR |
+                OP_XOR |
+                OP_NOT |
+                OP_SHL |
+                OP_SHR =>
 
+                RETURN WB_ALU;
 
+            WHEN OTHERS =>
 
-            when OP_LOAD =>
+                RETURN WB_ALU;
 
-                return WB_MEMORY;
+        END CASE;
 
-
-
-            when OP_ADD |
-                 OP_SUB |
-                 OP_INC |
-                 OP_DEC |
-                 OP_AND |
-                 OP_OR  |
-                 OP_XOR |
-                 OP_NOT |
-                 OP_SHL |
-                 OP_SHR =>
-
-                return WB_ALU;
-
-
-
-            when others =>
-
-                return WB_ALU;
-
-
-        end case;
-
-
-    end function;
-
-
-
-
+    END FUNCTION;
 
     ---------------------------------------------------------------------------
     -- Opcode Validation
     ---------------------------------------------------------------------------
 
-
-    function is_valid_opcode
-    (
+    FUNCTION is_valid_opcode(
         opcode : opcode_t
     )
-    return boolean is
+        RETURN BOOLEAN IS
 
+    BEGIN
 
-    begin
+        CASE opcode IS
 
+            WHEN OP_ADD |
+                OP_SUB |
+                OP_INC |
+                OP_DEC |
+                OP_AND |
+                OP_OR |
+                OP_XOR |
+                OP_NOT |
+                OP_SHL |
+                OP_SHR |
+                OP_LOAD |
+                OP_STORE |
+                OP_MOVI |
+                OP_JMP |
+                OP_JZ |
+                OP_JC |
+                OP_NOP |
+                OP_HALT =>
 
-        case opcode is
+                RETURN true;
 
+            WHEN OTHERS =>
 
-            when OP_ADD  |
-                 OP_SUB  |
-                 OP_INC  |
-                 OP_DEC  |
-                 OP_AND  |
-                 OP_OR   |
-                 OP_XOR  |
-                 OP_NOT  |
-                 OP_SHL  |
-                 OP_SHR  |
-                 OP_LOAD |
-                 OP_STORE|
-                 OP_MOVI |
-                 OP_JMP  |
-                 OP_JZ   |
-                 OP_JC   |
-                 OP_NOP  |
-                 OP_HALT =>
+                RETURN false;
 
+        END CASE;
 
-                return true;
+    END FUNCTION;
 
-
-
-            when others =>
-
-                return false;
-
-
-        end case;
-
-
-    end function;
-
-
-
-end package body cpu_pkg;
+END PACKAGE BODY cpu_pkg;

@@ -8,115 +8,89 @@
 --
 -- ============================================================================
 
+LIBRARY ieee;
 
-library ieee;
+USE ieee.std_logic_1164.ALL;
+USE ieee.numeric_std.ALL;
 
-use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
+USE work.cpu_pkg.ALL;
 
-use work.cpu_pkg.all;
+ENTITY pc IS
 
+    PORT (
+        clk : IN STD_LOGIC;
+        reset : IN STD_LOGIC;
 
+        enable : IN STD_LOGIC;
 
-entity pc is
+        load : IN STD_LOGIC;
 
-    port
-    (
-        clk     : in std_logic;
-        reset   : in std_logic;
+        next_address : IN address_t;
 
-        enable  : in std_logic;
-
-        load    : in std_logic;
-
-        next_address : in address_t;
-
-        pc_value : out address_t
+        pc_value : OUT address_t
     );
 
-end entity pc;
+END ENTITY pc;
 
-
-
-architecture rtl of pc is
-
+ARCHITECTURE rtl OF pc IS
 
     ---------------------------------------------------------------------------
     -- Internal PC Register
     ---------------------------------------------------------------------------
 
-    signal pc_reg : address_t := (others => '0');
+    SIGNAL pc_reg : address_t := (OTHERS => '0');
 
-
-
-begin
-
+BEGIN
 
     ---------------------------------------------------------------------------
     -- Program Counter Register
     ---------------------------------------------------------------------------
 
-    process(clk)
+    PROCESS (clk)
 
-    begin
+    BEGIN
 
-
-        if rising_edge(clk) then
-
+        IF rising_edge(clk) THEN
 
             -------------------------------------------------------------------
             -- Reset
             -------------------------------------------------------------------
 
-            if reset = '1' then
+            IF reset = '1' THEN
 
+                pc_reg <= (OTHERS => '0');
 
-                pc_reg <= (others => '0');
+                -------------------------------------------------------------------
+                -- Normal Operation
+                -------------------------------------------------------------------
 
-
-
-            -------------------------------------------------------------------
-            -- Normal Operation
-            -------------------------------------------------------------------
-
-            elsif enable = '1' then
-
+            ELSIF enable = '1' THEN
 
                 ---------------------------------------------------------------
                 -- Jump / Branch Load
                 ---------------------------------------------------------------
 
-                if load = '1' then
-
+                IF load = '1' THEN
 
                     pc_reg <= next_address;
 
+                    ---------------------------------------------------------------
+                    -- Sequential Increment
+                    ---------------------------------------------------------------
 
+                ELSE
 
-                ---------------------------------------------------------------
-                -- Sequential Increment
-                ---------------------------------------------------------------
+                    pc_reg <= STD_LOGIC_VECTOR(
+                              unsigned(pc_reg) + 1
+                              );
 
-                else
+                END IF;
 
+            END IF;
 
-                    pc_reg <= std_logic_vector(
-                                unsigned(pc_reg) + 1
-                             );
+        END IF;
 
-
-                end if;
-
-
-            end if;
-
-
-        end if;
-
-
-    end process;
-
-
+    END PROCESS;
 
     ---------------------------------------------------------------------------
     -- Output Assignment
@@ -124,6 +98,4 @@ begin
 
     pc_value <= pc_reg;
 
-
-
-end architecture rtl;
+END ARCHITECTURE rtl;

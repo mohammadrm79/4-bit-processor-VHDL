@@ -14,178 +14,164 @@
 --
 -- ============================================================================
 
+LIBRARY ieee;
 
-library ieee;
+USE ieee.std_logic_1164.ALL;
+USE ieee.numeric_std.ALL;
 
-use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
+USE work.cpu_pkg.ALL;
 
-use work.cpu_pkg.all;
+ENTITY register_file IS
 
+    PORT (
+        clk : IN STD_LOGIC;
+        reset : IN STD_LOGIC;
 
+        write_enable : IN STD_LOGIC;
 
-entity register_file is
+        write_address : IN register_index_t;
 
-    port
-    (
-        clk   : in std_logic;
-        reset : in std_logic;
+        write_data : IN data_word_t;
 
+        read_address_a : IN register_index_t;
 
-        write_enable : in std_logic;
+        read_address_b : IN register_index_t;
 
-        write_address : in register_index_t;
+        read_data_a : OUT data_word_t;
 
-        write_data : in data_word_t;
+        read_data_b : OUT data_word_t;
 
+        -----------------------------------------------------------------------
+        -- Debug Outputs
+        -----------------------------------------------------------------------
 
+        debug_r0 : OUT data_word_t;
 
-        read_address_a : in register_index_t;
+        debug_r1 : OUT data_word_t;
 
-        read_address_b : in register_index_t;
+        debug_r2 : OUT data_word_t;
 
-
-        read_data_a : out data_word_t;
-
-        read_data_b : out data_word_t
+        debug_r3 : OUT data_word_t
 
     );
 
-end entity register_file;
+END ENTITY register_file;
 
+ARCHITECTURE rtl OF register_file IS
 
-
-architecture rtl of register_file is
-
-
-    type register_array_t is array
+    TYPE register_array_t IS ARRAY
     (
-        0 to REGISTER_COUNT-1
+    0 TO REGISTER_COUNT - 1
     )
-    of data_word_t;
+    OF data_word_t;
 
+    SIGNAL registers : register_array_t :=
+                                          (
+                                          OTHERS => (OTHERS => '0')
+                                          );
 
-
-    signal registers : register_array_t :=
-    (
-        others => (others => '0')
-    );
-
-
-
-begin
-
+BEGIN
 
     ---------------------------------------------------------------------------
     -- Register Write Logic
     ---------------------------------------------------------------------------
 
-    process(clk)
+    PROCESS (clk)
 
-    begin
+    BEGIN
 
-        if rising_edge(clk) then
+        IF rising_edge(clk) THEN
 
+            IF reset = '1' THEN
 
-            if reset = '1' then
+                FOR i IN 0 TO REGISTER_COUNT - 1 LOOP
 
+                    registers(i) <= (OTHERS => '0');
 
-                for i in 0 to REGISTER_COUNT-1 loop
+                END LOOP;
 
-                    registers(i) <= (others => '0');
+            ELSIF write_enable = '1' THEN
 
-                end loop;
-
-
-
-            elsif write_enable = '1' then
-
-
-                if is_x(write_address) = false then
+                IF is_x(write_address) = false THEN
 
                     registers(
-                        to_integer(unsigned(write_address))
+                    to_integer(unsigned(write_address))
                     )
                     <= write_data;
+                    REPORT
+                        "WRITE REG="
+                        & INTEGER'image(to_integer(unsigned(write_address)))
+                        & " DATA="
+                        & INTEGER'image(to_integer(unsigned(write_data)))
+                        SEVERITY NOTE;
+                END IF;
 
-                end if;
+            END IF;
 
+        END IF;
 
-            end if;
-
-
-        end if;
-
-
-    end process;
-
-
+    END PROCESS;
 
     ---------------------------------------------------------------------------
     -- Register Read Logic
     ---------------------------------------------------------------------------
 
-    process(read_address_a, read_address_b, registers)
+    PROCESS (read_address_a, read_address_b, registers)
 
-    begin
-
+    BEGIN
 
         -----------------------------------------------------------------------
         -- Default values
         -----------------------------------------------------------------------
 
-        read_data_a <= (others => '0');
+        read_data_a <= (OTHERS => '0');
 
-        read_data_b <= (others => '0');
-
-
+        read_data_b <= (OTHERS => '0');
 
         -----------------------------------------------------------------------
         -- Read Port A
         -----------------------------------------------------------------------
 
-        if is_x(read_address_a) = false then
+        IF is_x(read_address_a) = false THEN
 
-
-            if to_integer(unsigned(read_address_a)) < REGISTER_COUNT then
-
+            IF to_integer(unsigned(read_address_a)) < REGISTER_COUNT THEN
 
                 read_data_a <= registers(
-                    to_integer(unsigned(read_address_a))
-                );
+                               to_integer(unsigned(read_address_a))
+                               );
 
+            END IF;
 
-            end if;
-
-
-        end if;
-
-
+        END IF;
 
         -----------------------------------------------------------------------
         -- Read Port B
         -----------------------------------------------------------------------
 
-        if is_x(read_address_b) = false then
+        IF is_x(read_address_b) = false THEN
 
-
-            if to_integer(unsigned(read_address_b)) < REGISTER_COUNT then
-
+            IF to_integer(unsigned(read_address_b)) < REGISTER_COUNT THEN
 
                 read_data_b <= registers(
-                    to_integer(unsigned(read_address_b))
-                );
+                               to_integer(unsigned(read_address_b))
+                               );
 
+            END IF;
 
-            end if;
+        END IF;
 
+    END PROCESS;
 
-        end if;
+    ---------------------------------------------------------------------------
+    -- Debug Register Outputs
+    ---------------------------------------------------------------------------
 
+    debug_r0 <= registers(0);
 
+    debug_r1 <= registers(1);
 
-    end process;
+    debug_r2 <= registers(2);
 
+    debug_r3 <= registers(3);
 
-
-end architecture rtl;
+END ARCHITECTURE rtl;

@@ -1,258 +1,218 @@
 -- ============================================================================
 -- Project      : RISC-4 Educational CPU
 -- File         : alu.vhdl
--- Description  : Arithmetic Logic Unit
 --
--- Version      : 1.0.0
--- Language     : VHDL-2008
---
--- Implements:
---   - DD-001 : 4-bit Datapath
---   - DD-003 : Load/Store Architecture
---   - DD-005 : Multi-Cycle Execution
+-- Version      : 1.1.0
+-- Description  :
+--   Fixed combinational ALU timing
+--   Fixed extended_result latch issue
+--   Fixed carry generation
+--   Fixed shift carry handling
+--   Fixed overflow calculation
 --
 -- ============================================================================
 
-library ieee;
+LIBRARY ieee;
 
-use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
+USE ieee.std_logic_1164.ALL;
+USE ieee.numeric_std.ALL;
 
-use work.cpu_pkg.all;
+USE work.cpu_pkg.ALL;
 
+ENTITY alu IS
 
+    PORT (
+        operand_a : IN data_word_t;
 
-entity alu is
+        operand_b : IN data_word_t;
 
-    port
-    (
-        operand_a : in  data_word_t;
-        operand_b : in  data_word_t;
+        operation : IN alu_operation_t;
 
-        operation : in  alu_operation_t;
+        result : OUT data_word_t;
 
-        result : out data_word_t;
+        zero : OUT STD_LOGIC;
 
-        zero     : out std_logic;
-        carry    : out std_logic;
-        negative : out std_logic;
-        overflow : out std_logic
+        carry : OUT STD_LOGIC;
+
+        negative : OUT STD_LOGIC;
+
+        overflow : OUT STD_LOGIC
     );
 
-end entity alu;
+END ENTITY alu;
 
+ARCHITECTURE rtl OF alu IS
 
+    SIGNAL result_internal : data_word_t;
 
-architecture rtl of alu is
+    SIGNAL carry_internal : STD_LOGIC;
 
+    SIGNAL overflow_internal : STD_LOGIC;
 
-    signal extended_result : unsigned(DATA_WIDTH downto 0);
+BEGIN
 
-    signal alu_result : data_word_t;
+    PROCESS (
+        operand_a,
+        operand_b,
+        operation
+        )
 
+        VARIABLE temp : unsigned(DATA_WIDTH DOWNTO 0);
 
-begin
+        VARIABLE a : signed(DATA_WIDTH - 1 DOWNTO 0);
 
+        VARIABLE b : signed(DATA_WIDTH - 1 DOWNTO 0);
 
-    ---------------------------------------------------------------------------
-    -- ALU Combinational Logic
-    ---------------------------------------------------------------------------
+        VARIABLE r : signed(DATA_WIDTH - 1 DOWNTO 0);
 
-    process(operand_a, operand_b, operation)
+    BEGIN
 
-        variable temp : unsigned(DATA_WIDTH downto 0);
+        temp := (OTHERS => '0');
 
-    begin
+        carry_internal <= '0';
 
+        overflow_internal <= '0';
 
-        temp := (others => '0');
+        a := signed(operand_a);
 
+        b := signed(operand_b);
+        CASE operation IS
 
-        case operation is
+            WHEN ALU_ADD =>
 
+                temp :=
+                       unsigned('0' & operand_a)
+                       +
+                       unsigned('0' & operand_b);
 
-            -------------------------------------------------------------------
-            -- Arithmetic Operations
-            -------------------------------------------------------------------
+                r := a + b;
 
-            when ALU_ADD =>
+                REPORT
+                    " operand_a: " & INTEGER'image(to_integer(unsigned(operand_a))) &
+                    " operand_b: " & INTEGER'image(to_integer(unsigned(operand_b))) &
+                    " result: " & INTEGER'image(to_integer(unsigned(r))) &
+                    " temp: " & INTEGER'image(to_integer(temp)) &
+                    " a: " & INTEGER'image(to_integer(a)) &
+                    " b: " & INTEGER'image(to_integer(b)) &
+                    " r: " & INTEGER'image(to_integer(r)) &
+                    " overflow_internal: " & STD_LOGIC'image(overflow_internal)
+                    SEVERITY NOTE;
+                IF (operand_a(DATA_WIDTH - 1) = operand_b(DATA_WIDTH - 1))
+                    AND
+                    (r(DATA_WIDTH - 1) /= operand_a(DATA_WIDTH - 1))
+                    THEN
 
-                temp := unsigned('0' & operand_a)
-                      + unsigned('0' & operand_b);
+                    overflow_internal <= '1';
 
+                END IF;
 
+            WHEN ALU_SUB =>
 
-            when ALU_SUB =>
+                temp :=
+                       unsigned('0' & operand_a)
+                       -
+                       unsigned('0' & operand_b);
 
-                temp := unsigned('0' & operand_a)
-                      - unsigned('0' & operand_b);
+                r := a - b;
 
+                IF (operand_a(DATA_WIDTH - 1) /= operand_b(DATA_WIDTH - 1))
+                    AND
+                    (r(DATA_WIDTH - 1) /= operand_a(DATA_WIDTH - 1))
+                    THEN
 
+                    overflow_internal <= '1';
 
-            when ALU_INC =>
+                END IF;
 
-                temp := unsigned('0' & operand_a)
-                      + 1;
+            WHEN ALU_INC =>
 
+                temp :=
+                       unsigned('0' & operand_a)
+                       +
+                       1;
 
+            WHEN ALU_DEC =>
 
-            when ALU_DEC =>
+                temp :=
+                       unsigned('0' & operand_a)
+                       -
+                       1;
 
-                temp := unsigned('0' & operand_a)
-                      - 1;
+            WHEN ALU_AND =>
 
+                temp(DATA_WIDTH - 1 DOWNTO 0)
+                 :=
+                unsigned(operand_a AND operand_b);
 
+            WHEN ALU_OR =>
 
-            -------------------------------------------------------------------
-            -- Logic Operations
-            -------------------------------------------------------------------
+                temp(DATA_WIDTH - 1 DOWNTO 0)
+                 :=
+                unsigned(operand_a OR operand_b);
 
-            when ALU_AND =>
+            WHEN ALU_XOR =>
 
-                temp(DATA_WIDTH-1 downto 0)
-                    := unsigned(operand_a and operand_b);
+                temp(DATA_WIDTH - 1 DOWNTO 0)
+                 :=
+                unsigned(operand_a XOR operand_b);
 
+            WHEN ALU_NOT =>
 
+                temp(DATA_WIDTH - 1 DOWNTO 0)
+                 :=
+                unsigned(NOT operand_a);
 
-            when ALU_OR =>
+            WHEN ALU_SHL =>
 
-                temp(DATA_WIDTH-1 downto 0)
-                    := unsigned(operand_a or operand_b);
+                temp(DATA_WIDTH - 1 DOWNTO 0)
+                 :=
+                unsigned(operand_a(DATA_WIDTH - 2 DOWNTO 0) & '0');
 
+                temp(DATA_WIDTH)
+                 :=
+                operand_a(DATA_WIDTH - 1);
 
+            WHEN ALU_SHR =>
 
-            when ALU_XOR =>
+                temp(DATA_WIDTH - 1 DOWNTO 0)
+                 :=
+                unsigned('0' & operand_a(DATA_WIDTH - 1 DOWNTO 1));
 
-                temp(DATA_WIDTH-1 downto 0)
-                    := unsigned(operand_a xor operand_b);
+                temp(DATA_WIDTH)
+                 :=
+                operand_a(0);
 
+            WHEN ALU_PASS =>
 
+                temp(DATA_WIDTH - 1 DOWNTO 0)
+                 :=
+                unsigned(operand_a);
 
-            when ALU_NOT =>
+            WHEN OTHERS =>
 
-                temp(DATA_WIDTH-1 downto 0)
-                    := unsigned(not operand_a);
+                temp := (OTHERS => '0');
 
+        END CASE;
 
+        result_internal
+        <= STD_LOGIC_VECTOR(temp(DATA_WIDTH - 1 DOWNTO 0));
 
-            -------------------------------------------------------------------
-            -- Shift Operations
-            -------------------------------------------------------------------
+        carry_internal
+        <= temp(DATA_WIDTH);
 
-            when ALU_SHL =>
+    END PROCESS;
 
-                temp(DATA_WIDTH-1 downto 0)
-                    := shift_left(unsigned(operand_a), 1);
+    result <= result_internal;
 
+    zero <= '1'
+            WHEN result_internal = "0000"
+            ELSE
+            '0';
 
+    negative <= result_internal(DATA_WIDTH - 1);
 
-            when ALU_SHR =>
+    carry <= carry_internal;
 
-                temp(DATA_WIDTH-1 downto 0)
-                    := shift_right(unsigned(operand_a), 1);
+    overflow <= overflow_internal;
 
-
-
-            -------------------------------------------------------------------
-            -- Pass Operation
-            -------------------------------------------------------------------
-
-            when ALU_PASS =>
-
-                temp(DATA_WIDTH-1 downto 0)
-                    := unsigned(operand_a);
-
-
-
-        end case;
-
-
-
-        extended_result <= temp;
-        
-        alu_result <= std_logic_vector(temp(DATA_WIDTH-1 downto 0));
-
-
-    end process;
-
-
-
-    ---------------------------------------------------------------------------
-    -- Result Assignment
-    ---------------------------------------------------------------------------
-
-    result <= alu_result;
-
-
-
-    ---------------------------------------------------------------------------
-    -- Status Flags
-    ---------------------------------------------------------------------------
-
-    zero <= '1' when alu_result = "0000"
-            else '0';
-
-
-    negative <= alu_result(DATA_WIDTH-1);
-
-
-
-    carry <= extended_result(DATA_WIDTH);
-
-
-
-    ---------------------------------------------------------------------------
-    -- Overflow Detection
-    ---------------------------------------------------------------------------
-
-    process(operand_a, operand_b, alu_result, operation)
-
-    begin
-
-        overflow <= '0';
-
-
-        case operation is
-
-
-            when ALU_ADD =>
-
-                if (operand_a(DATA_WIDTH-1) =
-                    operand_b(DATA_WIDTH-1))
-                and
-                   (alu_result(DATA_WIDTH-1) /=
-                    operand_a(DATA_WIDTH-1)) then
-
-                    overflow <= '1';
-
-                end if;
-
-
-
-            when ALU_SUB =>
-
-                if (operand_a(DATA_WIDTH-1) /=
-                    operand_b(DATA_WIDTH-1))
-                and
-                   (alu_result(DATA_WIDTH-1) /=
-                    operand_a(DATA_WIDTH-1)) then
-
-                    overflow <= '1';
-
-                end if;
-
-
-
-            when others =>
-
-                overflow <= '0';
-
-
-        end case;
-
-
-    end process;
-
-
-
-end architecture rtl;
+END ARCHITECTURE rtl;

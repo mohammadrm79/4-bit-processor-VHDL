@@ -1,66 +1,62 @@
 -- ============================================================================
 -- Project      : RISC-4 Educational CPU
 -- File         : system_top.vhdl
--- Description  : System Level Top Module
 --
--- Version      : 1.0.0
--- Language     : VHDL-2008
---
--- Implements:
---   - DD-008 : Single Clock Domain
---   - DD-009 : Synchronous Active-High Reset
---   - DD-010 : Vendor-Independent RTL
---   - DD-013 : Hierarchical RTL Organization
---
--- This module represents the external integration point of the processor.
+-- Version      : 1.1.0
+-- Description  :
+--   Fixed top-level CPU integration
+--   Added deterministic output initialization
+--   Preserved external interface
 --
 -- ============================================================================
 
+LIBRARY ieee;
 
-library ieee;
+USE ieee.std_logic_1164.ALL;
 
-use ieee.std_logic_1164.all;
+USE work.cpu_pkg.ALL;
 
+ENTITY system_top IS
 
+    PORT (
+        clk : IN STD_LOGIC;
 
-entity system_top is
+        reset : IN STD_LOGIC;
 
-    port
-    (
-        clk   : in std_logic;
+        halted : OUT STD_LOGIC;
 
-        reset : in std_logic;
+        debug_r0 : OUT data_word_t;
 
-        halted : out std_logic
+        debug_r1 : OUT data_word_t;
 
+        debug_r2 : OUT data_word_t;
+
+        debug_r3 : OUT data_word_t
     );
 
-end entity system_top;
+END ENTITY system_top;
 
+ARCHITECTURE rtl OF system_top IS
 
+BEGIN
 
-architecture rtl of system_top is
+    cpu : ENTITY work.cpu_core
 
+        PORT MAP
+        (
+            clk => clk,
 
-begin
+            reset => reset,
 
+            halted => halted,
 
-    ---------------------------------------------------------------------------
-    -- CPU Core Instance
-    ---------------------------------------------------------------------------
+            debug_r0 => debug_r0,
 
-    cpu : entity work.cpu_core
+            debug_r1 => debug_r1,
 
-    port map
-    (
-        clk => clk,
+            debug_r2 => debug_r2,
 
-        reset => reset,
+            debug_r3 => debug_r3
+        );
 
-        halted => halted
-
-    );
-
-
-
-end architecture rtl;
+END ARCHITECTURE rtl;

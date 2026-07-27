@@ -1,37 +1,32 @@
-library ieee;
+LIBRARY ieee;
 
-use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
+USE ieee.std_logic_1164.ALL;
+USE ieee.numeric_std.ALL;
 
-use work.cpu_pkg.all;
+USE work.cpu_pkg.ALL;
 
+ENTITY tb_alu IS
+END ENTITY tb_alu;
 
-entity tb_alu is
-end entity tb_alu;
+ARCHITECTURE sim OF tb_alu IS
 
+    SIGNAL operand_a : data_word_t;
+    SIGNAL operand_b : data_word_t;
 
-architecture sim of tb_alu is
+    SIGNAL operation : alu_operation_t;
 
+    SIGNAL result : data_word_t;
 
-    signal operand_a : data_word_t;
-    signal operand_b : data_word_t;
+    SIGNAL zero : STD_LOGIC;
+    SIGNAL carry : STD_LOGIC;
+    SIGNAL negative : STD_LOGIC;
+    SIGNAL overflow : STD_LOGIC;
 
-    signal operation : alu_operation_t;
+BEGIN
 
-    signal result : data_word_t;
+    uut : ENTITY work.alu
 
-    signal zero     : std_logic;
-    signal carry    : std_logic;
-    signal negative : std_logic;
-    signal overflow : std_logic;
-
-
-begin
-
-
-    uut : entity work.alu
-
-        port map
+        PORT MAP
         (
             operand_a => operand_a,
             operand_b => operand_b,
@@ -40,18 +35,15 @@ begin
 
             result => result,
 
-            zero     => zero,
-            carry    => carry,
+            zero => zero,
+            carry => carry,
             negative => negative,
             overflow => overflow
         );
 
+    stimulus : PROCESS
 
-
-    stimulus : process
-
-    begin
-
+    BEGIN
 
         -----------------------------------------------------------------------
         -- ADD
@@ -61,14 +53,11 @@ begin
         operand_b <= "0001";
         operation <= ALU_ADD;
 
-        wait for 10 ns;
+        WAIT FOR 10 ns;
 
-
-        assert result = "0100"
-            report "ADD failed"
-            severity error;
-
-
+        ASSERT result = "0100"
+        REPORT "ADD failed"
+            SEVERITY error;
 
         -----------------------------------------------------------------------
         -- SUB
@@ -78,14 +67,11 @@ begin
         operand_b <= "0001";
         operation <= ALU_SUB;
 
-        wait for 10 ns;
+        WAIT FOR 10 ns;
 
-
-        assert result = "0011"
-            report "SUB failed"
-            severity error;
-
-
+        ASSERT result = "0011"
+        REPORT "SUB failed"
+            SEVERITY error;
 
         -----------------------------------------------------------------------
         -- AND
@@ -95,14 +81,11 @@ begin
         operand_b <= "0011";
         operation <= ALU_AND;
 
-        wait for 10 ns;
+        WAIT FOR 10 ns;
 
-
-        assert result = "0011"
-            report "AND failed"
-            severity error;
-
-
+        ASSERT result = "0011"
+        REPORT "AND failed"
+            SEVERITY error;
 
         -----------------------------------------------------------------------
         -- OR
@@ -112,14 +95,11 @@ begin
         operand_b <= "0011";
         operation <= ALU_OR;
 
-        wait for 10 ns;
+        WAIT FOR 10 ns;
 
-
-        assert result = "1011"
-            report "OR failed"
-            severity error;
-
-
+        ASSERT result = "1011"
+        REPORT "OR failed"
+            SEVERITY error;
 
         -----------------------------------------------------------------------
         -- XOR
@@ -129,14 +109,11 @@ begin
         operand_b <= "0011";
         operation <= ALU_XOR;
 
-        wait for 10 ns;
+        WAIT FOR 10 ns;
 
-
-        assert result = "1100"
-            report "XOR failed"
-            severity error;
-
-
+        ASSERT result = "1100"
+        REPORT "XOR failed"
+            SEVERITY error;
 
         -----------------------------------------------------------------------
         -- NOT
@@ -146,14 +123,11 @@ begin
         operand_b <= "0000";
         operation <= ALU_NOT;
 
-        wait for 10 ns;
+        WAIT FOR 10 ns;
 
-
-        assert result = "0101"
-            report "NOT failed"
-            severity error;
-
-
+        ASSERT result = "0101"
+        REPORT "NOT failed"
+            SEVERITY error;
 
         -----------------------------------------------------------------------
         -- Zero Flag
@@ -163,24 +137,17 @@ begin
         operand_b <= "0000";
         operation <= ALU_ADD;
 
-        wait for 10 ns;
+        WAIT FOR 10 ns;
 
+        ASSERT zero = '1'
+        REPORT "Zero flag failed"
+            SEVERITY error;
 
-        assert zero = '1'
-            report "Zero flag failed"
-            severity error;
+        REPORT "ALU test completed successfully"
+            SEVERITY note;
 
+        WAIT;
 
+    END PROCESS;
 
-        report "ALU test completed successfully"
-            severity note;
-
-
-
-        wait;
-
-
-    end process;
-
-
-end architecture sim;
+END ARCHITECTURE sim;

@@ -8,154 +8,118 @@
 --
 -- ============================================================================
 
+LIBRARY ieee;
 
-library ieee;
+USE ieee.std_logic_1164.ALL;
 
-use ieee.std_logic_1164.all;
+USE work.cpu_pkg.ALL;
 
-use work.cpu_pkg.all;
+ENTITY tb_control IS
 
+END ENTITY tb_control;
 
+ARCHITECTURE sim OF tb_control IS
 
-entity tb_control is
+    SIGNAL clk : STD_LOGIC := '0';
 
-end entity tb_control;
+    SIGNAL reset : STD_LOGIC := '0';
 
+    SIGNAL opcode : opcode_t := OP_NOP;
 
+    SIGNAL zero_flag : STD_LOGIC := '0';
 
-architecture sim of tb_control is
+    SIGNAL carry_flag : STD_LOGIC := '0';
 
+    SIGNAL state_out : cpu_state_t;
 
-    signal clk : std_logic := '0';
+    SIGNAL pc_enable : STD_LOGIC;
 
-    signal reset : std_logic := '0';
+    SIGNAL pc_load : STD_LOGIC;
 
+    SIGNAL ir_enable : STD_LOGIC;
 
-    signal opcode : opcode_t := OP_NOP;
+    SIGNAL register_write_enable : STD_LOGIC;
 
+    SIGNAL flags_write_enable : STD_LOGIC;
 
-    signal zero_flag : std_logic := '0';
+    SIGNAL memory_read_enable : STD_LOGIC;
 
-    signal carry_flag : std_logic := '0';
+    SIGNAL memory_write_enable : STD_LOGIC;
 
+    SIGNAL halted : STD_LOGIC;
 
+    CONSTANT CLK_PERIOD : TIME := 10 ns;
 
-    signal state_out : cpu_state_t;
-
-
-    signal pc_enable : std_logic;
-
-    signal pc_load : std_logic;
-
-    signal ir_enable : std_logic;
-
-
-    signal register_write_enable : std_logic;
-
-    signal flags_write_enable : std_logic;
-
-
-    signal memory_read_enable : std_logic;
-
-    signal memory_write_enable : std_logic;
-
-
-    signal halted : std_logic;
-
-
-
-    constant CLK_PERIOD : time := 10 ns;
-
-
-
-begin
-
+BEGIN
 
     ---------------------------------------------------------------------------
     -- Clock
     ---------------------------------------------------------------------------
 
-    clk_process : process
+    clk_process : PROCESS
 
-    begin
+    BEGIN
 
-        while true loop
+        WHILE true LOOP
 
             clk <= '0';
 
-            wait for CLK_PERIOD / 2;
-
+            WAIT FOR CLK_PERIOD / 2;
 
             clk <= '1';
 
-            wait for CLK_PERIOD / 2;
+            WAIT FOR CLK_PERIOD / 2;
 
+        END LOOP;
 
-        end loop;
-
-    end process;
-
-
+    END PROCESS;
 
     ---------------------------------------------------------------------------
     -- DUT
     ---------------------------------------------------------------------------
 
-    uut : entity work.control_fsm
+    uut : ENTITY work.control_fsm
 
-    port map
-    (
+        PORT MAP
+        (
 
-        clk => clk,
+            clk => clk,
 
-        reset => reset,
+            reset => reset,
 
+            opcode => opcode,
 
-        opcode => opcode,
+            zero_flag => zero_flag,
 
+            carry_flag => carry_flag,
 
-        zero_flag => zero_flag,
+            state_out => state_out,
 
-        carry_flag => carry_flag,
+            pc_enable => pc_enable,
 
+            pc_load => pc_load,
 
-        state_out => state_out,
+            ir_enable => ir_enable,
 
+            register_write_enable => register_write_enable,
 
-        pc_enable => pc_enable,
+            flags_write_enable => flags_write_enable,
 
-        pc_load => pc_load,
+            memory_read_enable => memory_read_enable,
 
+            memory_write_enable => memory_write_enable,
 
-        ir_enable => ir_enable,
+            halted => halted
 
-
-        register_write_enable => register_write_enable,
-
-
-        flags_write_enable => flags_write_enable,
-
-
-        memory_read_enable => memory_read_enable,
-
-        memory_write_enable => memory_write_enable,
-
-
-        halted => halted
-
-    );
-
-
+        );
 
     ---------------------------------------------------------------------------
     -- Test Sequence
     ---------------------------------------------------------------------------
 
-    stimulus : process
+    stimulus : PROCESS
 
-    begin
-
-
+    BEGIN
 
         -----------------------------------------------------------------------
         -- Reset
@@ -163,27 +127,21 @@ begin
 
         reset <= '1';
 
-        wait for CLK_PERIOD * 2;
-
+        WAIT FOR CLK_PERIOD * 2;
 
         reset <= '0';
-
-
 
         -----------------------------------------------------------------------
         -- FETCH
         -----------------------------------------------------------------------
 
-        wait until rising_edge(clk);
+        WAIT UNTIL rising_edge(clk);
 
+        ASSERT state_out = FETCH
 
-        assert state_out = FETCH
+        REPORT "FSM did not enter FETCH state"
 
-        report "FSM did not enter FETCH state"
-
-        severity error;
-
-
+            SEVERITY error;
 
         -----------------------------------------------------------------------
         -- Normal Instruction Flow
@@ -191,22 +149,17 @@ begin
 
         opcode <= OP_ADD;
 
+        WAIT UNTIL rising_edge(clk);
 
-        wait until rising_edge(clk);
+        WAIT UNTIL rising_edge(clk);
 
-        wait until rising_edge(clk);
+        WAIT UNTIL rising_edge(clk);
 
-        wait until rising_edge(clk);
+        ASSERT state_out = FETCH
 
+        REPORT "FSM failed to return to FETCH"
 
-
-        assert state_out = FETCH
-
-        report "FSM failed to return to FETCH"
-
-        severity error;
-
-
+            SEVERITY error;
 
         -----------------------------------------------------------------------
         -- HALT Instruction
@@ -214,32 +167,22 @@ begin
 
         opcode <= OP_HALT;
 
+        WAIT UNTIL rising_edge(clk);
 
-        wait until rising_edge(clk);
+        WAIT UNTIL rising_edge(clk);
 
-        wait until rising_edge(clk);
+        ASSERT halted = '1'
 
+        REPORT "HALT instruction failed"
 
+            SEVERITY error;
 
-        assert halted = '1'
+        REPORT "Control FSM test completed successfully"
 
-        report "HALT instruction failed"
+            SEVERITY note;
 
-        severity error;
+        WAIT;
 
+    END PROCESS;
 
-
-        report "Control FSM test completed successfully"
-
-        severity note;
-
-
-
-        wait;
-
-
-    end process;
-
-
-
-end architecture sim;
+END ARCHITECTURE sim;

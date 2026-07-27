@@ -3,445 +3,363 @@
 -- File         : control_fsm.vhdl
 -- Description  : CPU Control Finite State Machine
 --
--- Version      : 1.2.0
--- Description  :
---   Added ALU operation control for datapath integration
---
+-- Version      : 1.6.0
 -- ============================================================================
 
+LIBRARY ieee;
 
-library ieee;
+USE ieee.std_logic_1164.ALL;
+USE ieee.numeric_std.ALL;
+USE work.cpu_pkg.ALL;
 
-use ieee.std_logic_1164.all;
+ENTITY control_fsm IS
 
-use work.cpu_pkg.all;
+    PORT (
+        clk : IN STD_LOGIC;
 
+        reset : IN STD_LOGIC;
 
+        opcode : IN opcode_t;
 
-entity control_fsm is
+        zero_flag : IN STD_LOGIC;
 
-    port
-    (
-        clk   : in std_logic;
-        reset : in std_logic;
+        carry_flag : IN STD_LOGIC;
 
+        state_out : OUT cpu_state_t;
 
-        opcode : in opcode_t;
+        pc_enable : OUT STD_LOGIC;
 
+        pc_load : OUT STD_LOGIC;
 
-        zero_flag  : in std_logic;
-        carry_flag : in std_logic;
+        ir_enable : OUT STD_LOGIC;
 
+        register_write_enable : OUT STD_LOGIC;
 
-        state_out : out cpu_state_t;
+        flags_write_enable : OUT STD_LOGIC;
 
+        memory_read_enable : OUT STD_LOGIC;
 
-        pc_enable : out std_logic;
-        pc_load   : out std_logic;
+        memory_write_enable : OUT STD_LOGIC;
 
+        alu_operation : OUT alu_operation_t;
 
-        ir_enable : out std_logic;
+        write_back_source : OUT write_back_source_t;
 
+        halted : OUT STD_LOGIC;
 
-        register_write_enable : out std_logic;
-
-
-        flags_write_enable : out std_logic;
-
-
-        memory_read_enable  : out std_logic;
-        memory_write_enable : out std_logic;
-
-
-        alu_operation : out alu_operation_t;
-
-
-        halted : out std_logic
-
+        alu_result_enable : OUT STD_LOGIC
     );
 
-end entity control_fsm;
+END ENTITY control_fsm;
 
+ARCHITECTURE rtl OF control_fsm IS
 
+    SIGNAL current_state : cpu_state_t := STATE_RESET;
 
-architecture rtl of control_fsm is
+    SIGNAL next_state : cpu_state_t := STATE_RESET;
 
-
-    signal current_state : cpu_state_t;
-
-    signal next_state : cpu_state_t;
-
-
-
-begin
-
-
+BEGIN
 
     ---------------------------------------------------------------------------
     -- State Register
     ---------------------------------------------------------------------------
 
-    process(clk)
+    PROCESS (clk)
 
-    begin
+    BEGIN
 
-        if rising_edge(clk) then
+        IF rising_edge(clk) THEN
 
-
-            if reset = '1' then
+            IF reset = '1' THEN
 
                 current_state <= STATE_RESET;
 
-
-            else
+            ELSE
 
                 current_state <= next_state;
 
+            END IF;
 
-            end if;
+        END IF;
 
-
-        end if;
-
-
-    end process;
-
-
+    END PROCESS;
 
     ---------------------------------------------------------------------------
     -- Next State Logic
     ---------------------------------------------------------------------------
 
-    process(current_state, opcode)
+    PROCESS (current_state, opcode)
 
-    begin
+    BEGIN
 
+        next_state <= STATE_RESET;
 
-        next_state <= current_state;
+        CASE current_state IS
 
-
-        case current_state is
-
-
-            when STATE_RESET =>
+            WHEN STATE_RESET =>
 
                 next_state <= FETCH;
 
-
-
-            when FETCH =>
+            WHEN FETCH =>
 
                 next_state <= DECODE;
 
-
-
-            when DECODE =>
+            WHEN DECODE =>
 
                 next_state <= EXECUTE;
 
+            WHEN EXECUTE =>
 
-
-            when EXECUTE =>
-
-
-                if opcode = OP_HALT then
+                IF opcode = OP_HALT THEN
 
                     next_state <= STATE_HALTED;
 
-
-                else
+                ELSE
 
                     next_state <= WRITE_BACK;
 
+                END IF;
 
-                end if;
-
-
-
-            when WRITE_BACK =>
+            WHEN WRITE_BACK =>
 
                 next_state <= FETCH;
 
-
-
-            when STATE_HALTED =>
+            WHEN STATE_HALTED =>
 
                 next_state <= STATE_HALTED;
 
+            WHEN OTHERS =>
 
+                next_state <= STATE_RESET;
 
-        end case;
+        END CASE;
 
-
-    end process;
-
-
+    END PROCESS;
 
     ---------------------------------------------------------------------------
-    -- Output Decode
+    -- Output Logic
     ---------------------------------------------------------------------------
 
-    process(current_state, opcode, zero_flag, carry_flag)
+    PROCESS (
+        current_state,
+        opcode,
+        zero_flag,
+        carry_flag
+        )
 
-    begin
-
-
+    BEGIN
+        alu_result_enable <= '0';
         pc_enable <= '0';
 
         pc_load <= '0';
 
-
         ir_enable <= '0';
-
 
         register_write_enable <= '0';
 
-
         flags_write_enable <= '0';
-
 
         memory_read_enable <= '0';
 
         memory_write_enable <= '0';
 
-
         alu_operation <= ALU_PASS;
 
+        write_back_source <= WB_ALU;
 
         halted <= '0';
 
+        CASE current_state IS
 
+            WHEN STATE_RESET =>
 
-        case current_state is
+                NULL;
 
-
-
-            -------------------------------------------------------------------
-            -- FETCH
-            -------------------------------------------------------------------
-
-            when FETCH =>
-
-
-                pc_enable <= '1';
+            WHEN FETCH =>
 
                 ir_enable <= '1';
 
+                pc_enable <= '1';
 
+            WHEN DECODE =>
 
-            -------------------------------------------------------------------
-            -- DECODE
-            -------------------------------------------------------------------
+                NULL;
 
-            when DECODE =>
+            WHEN EXECUTE =>
 
-                null;
+                CASE opcode IS
 
-
-
-            -------------------------------------------------------------------
-            -- EXECUTE
-            -------------------------------------------------------------------
-
-            when EXECUTE =>
-
-
-                case opcode is
-
-
-                    when OP_ADD =>
+                    WHEN OP_ADD =>
 
                         alu_operation <= ALU_ADD;
 
                         flags_write_enable <= '1';
+                        alu_result_enable <= '1';
 
-
-
-                    when OP_SUB =>
+                    WHEN OP_SUB =>
 
                         alu_operation <= ALU_SUB;
 
                         flags_write_enable <= '1';
+                        alu_result_enable <= '1';
 
-
-
-                    when OP_INC =>
+                    WHEN OP_INC =>
 
                         alu_operation <= ALU_INC;
 
                         flags_write_enable <= '1';
+                        alu_result_enable <= '1';
 
-
-
-                    when OP_DEC =>
+                    WHEN OP_DEC =>
 
                         alu_operation <= ALU_DEC;
 
                         flags_write_enable <= '1';
+                        alu_result_enable <= '1';
 
-
-
-                    when OP_AND =>
+                    WHEN OP_AND =>
 
                         alu_operation <= ALU_AND;
 
                         flags_write_enable <= '1';
+                        alu_result_enable <= '1';
 
-
-
-                    when OP_OR =>
+                    WHEN OP_OR =>
 
                         alu_operation <= ALU_OR;
 
                         flags_write_enable <= '1';
+                        alu_result_enable <= '1';
 
-
-
-                    when OP_XOR =>
+                    WHEN OP_XOR =>
 
                         alu_operation <= ALU_XOR;
 
                         flags_write_enable <= '1';
+                        alu_result_enable <= '1';
 
-
-
-                    when OP_NOT =>
+                    WHEN OP_NOT =>
 
                         alu_operation <= ALU_NOT;
 
                         flags_write_enable <= '1';
+                        alu_result_enable <= '1';
 
-
-
-                    when OP_SHL =>
+                    WHEN OP_SHL =>
 
                         alu_operation <= ALU_SHL;
 
                         flags_write_enable <= '1';
+                        alu_result_enable <= '1';
 
-
-
-                    when OP_SHR =>
+                    WHEN OP_SHR =>
 
                         alu_operation <= ALU_SHR;
 
                         flags_write_enable <= '1';
+                        alu_result_enable <= '1';
 
+                    WHEN OP_MOVI =>
 
+                        write_back_source <= WB_IMMEDIATE;
 
-                    when OP_LOAD =>
+                    WHEN OP_LOAD =>
 
                         memory_read_enable <= '1';
 
+                        write_back_source <= WB_MEMORY;
 
-
-                    when OP_STORE =>
+                    WHEN OP_STORE =>
 
                         memory_write_enable <= '1';
 
-
-
-                    when OP_JMP =>
+                    WHEN OP_JMP =>
 
                         pc_load <= '1';
 
+                    WHEN OP_JZ =>
 
-
-                    when OP_JZ =>
-
-                        if zero_flag = '1' then
+                        IF zero_flag = '1' THEN
 
                             pc_load <= '1';
 
-                        end if;
+                        END IF;
 
+                    WHEN OP_JC =>
 
-
-                    when OP_JC =>
-
-                        if carry_flag = '1' then
+                        IF carry_flag = '1' THEN
 
                             pc_load <= '1';
 
-                        end if;
+                        END IF;
 
+                    WHEN OP_HALT =>
 
+                        NULL;
 
-                    when others =>
+                    WHEN OTHERS =>
 
-                        null;
+                        NULL;
 
+                END CASE;
 
+            WHEN WRITE_BACK =>
 
-                end case;
+                CASE opcode IS
 
-
-
-            -------------------------------------------------------------------
-            -- WRITE BACK
-            -------------------------------------------------------------------
-
-            when WRITE_BACK =>
-
-
-                case opcode is
-
-
-                    when OP_ADD |
-                         OP_SUB |
-                         OP_INC |
-                         OP_DEC |
-                         OP_AND |
-                         OP_OR  |
-                         OP_XOR |
-                         OP_NOT |
-                         OP_SHL |
-                         OP_SHR |
-                         OP_MOVI |
-                         OP_LOAD =>
-
+                    WHEN OP_ADD |
+                        OP_SUB |
+                        OP_INC |
+                        OP_DEC |
+                        OP_AND |
+                        OP_OR |
+                        OP_XOR |
+                        OP_NOT |
+                        OP_SHL |
+                        OP_SHR =>
 
                         register_write_enable <= '1';
 
+                        write_back_source <= WB_ALU;
 
+                    WHEN OP_MOVI =>
 
-                    when others =>
+                        register_write_enable <= '1';
 
-                        null;
+                        write_back_source <= WB_IMMEDIATE;
 
+                    WHEN OP_LOAD =>
 
+                        register_write_enable <= '1';
 
-                end case;
+                        write_back_source <= WB_MEMORY;
 
+                    WHEN OTHERS =>
 
+                        NULL;
 
-            -------------------------------------------------------------------
-            -- HALT
-            -------------------------------------------------------------------
+                END CASE;
 
-            when STATE_HALTED =>
-
+            WHEN STATE_HALTED =>
 
                 halted <= '1';
 
+            WHEN OTHERS =>
 
+                NULL;
 
-            when STATE_RESET =>
+        END CASE;
 
-
-                null;
-
-
-
-        end case;
-
-
-    end process;
-
-
+        REPORT
+            "STATE="
+            & cpu_state_t'image(current_state)
+            & " OPCODE="
+            & INTEGER'image(to_integer(unsigned(opcode)))
+            & " WB_EN="
+            & STD_LOGIC'image(register_write_enable)
+            SEVERITY NOTE;
+    END PROCESS;
 
     state_out <= current_state;
 
-
-
-end architecture rtl;
+END ARCHITECTURE rtl;

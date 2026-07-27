@@ -8,180 +8,133 @@
 --
 -- ============================================================================
 
+LIBRARY ieee;
 
-library ieee;
+USE ieee.std_logic_1164.ALL;
+USE ieee.numeric_std.ALL;
+USE ieee.std_logic_textio.ALL;
 
-use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
-use ieee.std_logic_textio.all;
+USE std.textio.ALL;
 
-use std.textio.all;
+USE work.cpu_pkg.ALL;
 
-use work.cpu_pkg.all;
+ENTITY instruction_memory IS
 
+    GENERIC (
+        DEPTH : NATURAL := 256;
 
-
-entity instruction_memory is
-
-    generic
-    (
-        DEPTH : natural := 256;
-
-        PROGRAM_FILE : string := "tb/programs/program_add.mem"
+        PROGRAM_FILE : STRING := "tb/programs/program_add.mem"
     );
 
-    port
-    (
-        address : in address_t;
+    PORT (
+        address : IN address_t;
 
-        instruction : out instruction_t
+        instruction : OUT instruction_t
     );
 
-end entity instruction_memory;
+END ENTITY instruction_memory;
 
-
-
-architecture rtl of instruction_memory is
-
+ARCHITECTURE rtl OF instruction_memory IS
 
     ---------------------------------------------------------------------------
     -- Memory Type
     ---------------------------------------------------------------------------
 
-    type memory_array_t is array
+    TYPE memory_array_t IS ARRAY
     (
-        0 to DEPTH-1
+    0 TO DEPTH - 1
     )
-    of instruction_t;
-
-
+    OF instruction_t;
 
     ---------------------------------------------------------------------------
     -- Initialize Memory From File
     ---------------------------------------------------------------------------
 
-    impure function init_memory return memory_array_t is
+    IMPURE FUNCTION init_memory RETURN memory_array_t IS
 
+        FILE input_file : text OPEN read_mode IS PROGRAM_FILE;
 
-        file input_file : text open read_mode is PROGRAM_FILE;
+        VARIABLE line_buffer : line;
 
+        VARIABLE temp_memory : memory_array_t :=
+                                                (OTHERS => (OTHERS => '0'));
 
-        variable line_buffer : line;
+        VARIABLE index : INTEGER := 0;
 
+        VARIABLE temp_word : STD_LOGIC_VECTOR(15 DOWNTO 0);
 
-        variable temp_memory : memory_array_t :=
-            (others => (others => '0'));
+    BEGIN
 
-
-        variable index : integer := 0;
-
-
-        variable temp_word : std_logic_vector(15 downto 0);
-
-
-
-    begin
-
-
-        while not endfile(input_file) loop
-
+        WHILE NOT endfile(input_file) LOOP
 
             readline(input_file, line_buffer);
 
-
             hread(
-                line_buffer,
-                temp_word
+            line_buffer,
+            temp_word
             );
 
-
-            if index < DEPTH then
+            REPORT "IMEM LOAD [" &
+                INTEGER'image(index) &
+                "] = " &
+                INTEGER'image(to_integer(unsigned(temp_word)))
+                SEVERITY NOTE;
+            IF index < DEPTH THEN
 
                 temp_memory(index) := temp_word;
 
-            end if;
-
+            END IF;
 
             index := index + 1;
 
+        END LOOP;
 
-        end loop;
+        RETURN temp_memory;
 
-
-
-        return temp_memory;
-
-
-
-    end function;
-
-
+    END FUNCTION;
 
     ---------------------------------------------------------------------------
     -- Memory Storage
     ---------------------------------------------------------------------------
 
-    signal memory : memory_array_t := init_memory;
+    SIGNAL memory : memory_array_t := init_memory;
 
-
-
-begin
-
-
+BEGIN
 
     ---------------------------------------------------------------------------
     -- Instruction Memory Read
     ---------------------------------------------------------------------------
 
-    process(address)
+    PROCESS (address)
 
-        variable addr_int : integer;
+        VARIABLE addr_int : INTEGER;
 
-
-    begin
-
+    BEGIN
 
         -----------------------------------------------------------------------
         -- Protect Against Unknown Address At Startup
         -----------------------------------------------------------------------
 
-        if is_x(address) then
+        IF is_x(address) THEN
 
+            instruction <= (OTHERS => '0');
 
-            instruction <= (others => '0');
-
-
-
-        else
-
+        ELSE
 
             addr_int := to_integer(unsigned(address));
 
-
-
-            if addr_int < DEPTH then
-
+            IF addr_int < DEPTH THEN
 
                 instruction <= memory(addr_int);
 
+            ELSE
 
+                instruction <= (OTHERS => '0');
 
-            else
+            END IF;
 
+        END IF;
 
-                instruction <= (others => '0');
+    END PROCESS;
 
-
-
-            end if;
-
-
-        end if;
-
-
-
-    end process;
-
-
-
-end architecture rtl;
+END ARCHITECTURE rtl;

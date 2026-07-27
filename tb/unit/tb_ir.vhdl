@@ -8,83 +8,65 @@
 --
 -- ============================================================================
 
+LIBRARY ieee;
 
-library ieee;
+USE ieee.std_logic_1164.ALL;
 
-use ieee.std_logic_1164.all;
+USE work.cpu_pkg.ALL;
 
-use work.cpu_pkg.all;
+ENTITY tb_ir IS
 
+END ENTITY tb_ir;
 
-
-entity tb_ir is
-
-end entity tb_ir;
-
-
-
-architecture behavior of tb_ir is
-
+ARCHITECTURE behavior OF tb_ir IS
 
     ---------------------------------------------------------------------------
     -- DUT Signals
     ---------------------------------------------------------------------------
 
-    signal clk : std_logic := '0';
+    SIGNAL clk : STD_LOGIC := '0';
 
-    signal reset : std_logic := '0';
+    SIGNAL reset : STD_LOGIC := '0';
 
-    signal enable : std_logic := '0';
+    SIGNAL enable : STD_LOGIC := '0';
 
+    SIGNAL instruction_in : instruction_t;
 
+    SIGNAL instruction_out : instruction_t;
 
-    signal instruction_in  : instruction_t;
+    CONSTANT CLOCK_PERIOD : TIME := 10 ns;
 
-    signal instruction_out : instruction_t;
-
-
-
-    constant CLOCK_PERIOD : time := 10 ns;
-
-
-
-begin
-
+BEGIN
 
     ---------------------------------------------------------------------------
     -- Clock Generator
     ---------------------------------------------------------------------------
 
-    clk_process : process
+    clk_process : PROCESS
 
-    begin
+    BEGIN
 
-        while true loop
+        WHILE true LOOP
 
             clk <= '0';
 
-            wait for CLOCK_PERIOD / 2;
-
+            WAIT FOR CLOCK_PERIOD / 2;
 
             clk <= '1';
 
-            wait for CLOCK_PERIOD / 2;
+            WAIT FOR CLOCK_PERIOD / 2;
 
+        END LOOP;
 
-        end loop;
-
-
-    end process;
-
-
+    END PROCESS;
 
     ---------------------------------------------------------------------------
     -- DUT Instance
     ---------------------------------------------------------------------------
 
-    uut : entity work.instruction_register
+    uut : ENTITY work.instruction_register
 
-        port map
+        PORT MAP
         (
 
             clk => clk,
@@ -99,16 +81,13 @@ begin
 
         );
 
-
-
     ---------------------------------------------------------------------------
     -- Test Sequence
     ---------------------------------------------------------------------------
 
-    stimulus : process
+    stimulus : PROCESS
 
-    begin
-
+    BEGIN
 
         -----------------------------------------------------------------------
         -- Reset Test
@@ -116,19 +95,15 @@ begin
 
         reset <= '1';
 
-        wait for CLOCK_PERIOD;
-
+        WAIT FOR CLOCK_PERIOD;
 
         reset <= '0';
 
+        ASSERT instruction_out = (OTHERS => '0')
 
-        assert instruction_out = (others => '0')
+        REPORT "Instruction register reset failed"
 
-        report "Instruction register reset failed"
-
-        severity error;
-
-
+            SEVERITY error;
 
         -----------------------------------------------------------------------
         -- Load Instruction Test
@@ -138,21 +113,15 @@ begin
 
         enable <= '1';
 
-
-        wait for CLOCK_PERIOD;
-
+        WAIT FOR CLOCK_PERIOD;
 
         enable <= '0';
 
+        ASSERT instruction_out = x"1234"
 
+        REPORT "Instruction load failed"
 
-        assert instruction_out = x"1234"
-
-        report "Instruction load failed"
-
-        severity error;
-
-
+            SEVERITY error;
 
         -----------------------------------------------------------------------
         -- Hold Test
@@ -160,34 +129,24 @@ begin
 
         instruction_in <= x"ABCD";
 
+        WAIT FOR CLOCK_PERIOD;
 
-        wait for CLOCK_PERIOD;
+        ASSERT instruction_out = x"1234"
 
+        REPORT "Instruction register hold failed"
 
-
-        assert instruction_out = x"1234"
-
-        report "Instruction register hold failed"
-
-        severity error;
-
-
+            SEVERITY error;
 
         -----------------------------------------------------------------------
         -- Finish Simulation
         -----------------------------------------------------------------------
 
-        report "tb_ir completed successfully"
+        REPORT "tb_ir completed successfully"
 
-        severity note;
+            SEVERITY note;
 
+        WAIT;
 
+    END PROCESS;
 
-        wait;
-
-
-    end process;
-
-
-
-end architecture behavior;
+END ARCHITECTURE behavior;

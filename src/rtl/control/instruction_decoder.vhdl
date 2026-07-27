@@ -3,130 +3,80 @@
 -- File         : instruction_decoder.vhdl
 -- Description  : Instruction Decoder
 --
--- Version      : 1.0.0
--- Language     : VHDL-2008
---
--- Implements:
---   - DD-002 : 16-bit Fixed-Length Instructions
---   - DD-011 : Multiple Instruction Formats
---   - DD-012 : Initial Opcode Allocation
---   - DD-013 : Hierarchical RTL Organization
---
--- Responsibilities:
---   - Extract opcode field
---   - Identify instruction format
---   - Decode register operands
---   - Decode immediate/address fields
---
+-- Version      : 3.0.0
 -- ============================================================================
 
+LIBRARY ieee;
 
-library ieee;
+USE ieee.std_logic_1164.ALL;
 
-use ieee.std_logic_1164.all;
+USE work.cpu_pkg.ALL;
 
-use work.cpu_pkg.all;
+ENTITY instruction_decoder IS
 
+    PORT (
+        instruction : IN instruction_t;
 
+        opcode : OUT opcode_t;
 
-entity instruction_decoder is
+        format : OUT instruction_format_t;
 
-    port
-    (
-        instruction : in instruction_t;
+        register_a : OUT register_index_t; -- Destination
 
+        source_a : OUT register_index_t; -- Source 1
 
-        opcode : out opcode_t;
+        source_b : OUT register_index_t; -- Source 2
 
+        immediate : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
 
-        format : out instruction_format_t;
-
-
-        register_a : out register_index_t;
-
-        register_b : out register_index_t;
-
-
-        immediate : out std_logic_vector(7 downto 0);
-
-
-        address : out address_t
+        address : OUT address_t
 
     );
 
-end entity instruction_decoder;
+END ENTITY instruction_decoder;
 
+ARCHITECTURE rtl OF instruction_decoder IS
 
-
-architecture rtl of instruction_decoder is
-
-
-    signal opcode_signal : opcode_t;
-
-
-
-begin
-
+BEGIN
 
     ---------------------------------------------------------------------------
-    -- Instruction Field Extraction
+    -- Opcode
     ---------------------------------------------------------------------------
 
-    opcode_signal <= instruction(15 downto 11);
-
-
-
-    opcode <= opcode_signal;
-
-
-
-    format <= opcode_to_format(opcode_signal);
-
-
+    opcode <= instruction(15 DOWNTO 11);
 
     ---------------------------------------------------------------------------
-    -- Register Extraction
+    -- Instruction Format
+    ---------------------------------------------------------------------------
+
+    format <= opcode_to_format(instruction(15 DOWNTO 11));
+
+    ---------------------------------------------------------------------------
+    -- Register Decode
     --
     -- R-Type:
-    --   [15:11] Opcode
-    --   [10:8]  Rd
-    --   [7:5]   Rs
-    --
-    -- I-Type:
-    --   [10:8] Register
-    --
+    -- [15:11] Opcode
+    -- [10:8]  Destination Register
+    -- [7:5]   Source Register A
+    -- [4:2]   Source Register B
     ---------------------------------------------------------------------------
 
-    register_a <= instruction(10 downto 8);
+    register_a <= instruction(10 DOWNTO 8);
 
+    source_a <= instruction(7 DOWNTO 5);
 
-
-    register_b <= instruction(7 downto 5);
-
-
+    source_b <= instruction(4 DOWNTO 2);
 
     ---------------------------------------------------------------------------
-    -- Immediate Extraction
-    --
-    -- I-Type:
-    --   [7:0] Immediate
-    --
+    -- Immediate Decode
     ---------------------------------------------------------------------------
 
-    immediate <= instruction(7 downto 0);
-
-
+    immediate <= instruction(7 DOWNTO 0);
 
     ---------------------------------------------------------------------------
-    -- Jump Address Extraction
-    --
-    -- J-Type:
-    --   [10:0] Address
-    --
+    -- Jump Address Decode
     ---------------------------------------------------------------------------
 
-    address <= "000" & instruction(10 downto 3);
+    address <= instruction(10 DOWNTO 0);
 
-
-
-end architecture rtl;
+END ARCHITECTURE rtl;
