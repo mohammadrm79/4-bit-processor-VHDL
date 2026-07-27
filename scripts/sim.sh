@@ -4,6 +4,7 @@ set -euo pipefail
 REPORT_ONLY=false
 NO_TIMESTAMP=false
 NO_FILE_NAME=false
+TB_NAME="tb_cpu"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -15,6 +16,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --no-file-name)
             NO_FILE_NAME=true
+            ;;
+        --tb)
+            TB_NAME="$2"
+            shift
             ;;
         *)
             echo "Unknown option: $1"
@@ -76,9 +81,7 @@ run_logged() {
     "$@" 2>&1 | while IFS= read -r line; do
 
         if $REPORT_ONLY; then
-
             [[ "$line" =~ report\ note|report\ warning|report\ error|assertion\ note|assertion\ warning|assertion\ error ]] || continue
-
         fi
 
         print_line "$line"
@@ -92,8 +95,8 @@ log "======================================"
 log "RISC-4 Simulation"
 log "======================================"
 log "Log file: $LOG_FILE"
-log "Wave GHW: $WAVE_DIR/cpu.ghw"
-log "Wave VCD: $WAVE_DIR/cpu.vcd"
+log "Wave GHW: $WAVE_DIR/${TB_NAME}.ghw"
+log "Wave VCD: $WAVE_DIR/${TB_NAME}.vcd"
 
 find "$WORK_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
 find "$WAVE_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
@@ -130,6 +133,7 @@ CONTROL_FILES=(
     "$PROJECT_ROOT/src/rtl/control/instruction_decoder.vhdl"
     "$PROJECT_ROOT/src/rtl/control/cpu_core.vhdl"
 )
+
 for file in "${CONTROL_FILES[@]}"; do
     run_logged "Checking: $file" \
         ghdl -a --std=08 --workdir="$WORK_DIR" "$file"
@@ -139,12 +143,30 @@ run_logged "Analyzing top module..." \
     ghdl -a --std=08 --workdir="$WORK_DIR" \
     "$PROJECT_ROOT/src/top/system_top.vhdl"
 
-run_logged "Analyzing CPU testbench..." \
+TB_FILE=""
+
+case "$TB_NAME" in
+    tb_cpu)
+        TB_FILE="$PROJECT_ROOT/tb/integration/tb_cpu.vhdl"
+        ;;
+    tb_register_file)
+        TB_FILE="$PROJECT_ROOT/tb/unit/tb_register_file.vhdl"
+        ;;
+    tb_alu)
+        TB_FILE="$PROJECT_ROOT/tb/unit/tb_alu.vhdl"
+        ;;
+    *)
+        echo "Unknown testbench: $TB_NAME"
+        exit 1
+        ;;
+esac
+
+run_logged "Analyzing testbench..." \
     ghdl -a --std=08 --workdir="$WORK_DIR" \
-    "$PROJECT_ROOT/tb/integration/tb_cpu.vhdl"
+    "$TB_FILE"
 
 run_logged "Elaborating testbench..." \
-    ghdl -e --std=08 --workdir="$WORK_DIR" tb_cpu
+    ghdl -e --std=08 --workdir="$WORK_DIR" "$TB_NAME"
 
 if ! $REPORT_ONLY; then
     log "Running simulation..."
@@ -153,9 +175,9 @@ fi
 ghdl -r \
     --std=08 \
     --workdir="$WORK_DIR" \
-    tb_cpu \
-    --wave="$WAVE_DIR/cpu.ghw" \
-    --vcd="$WAVE_DIR/cpu.vcd" \
+    "$TB_NAME" \
+    --wave="$WAVE_DIR/${TB_NAME}.ghw" \
+    --vcd="$WAVE_DIR/${TB_NAME}.vcd" \
     --stop-time=1us \
 2>&1 | while IFS= read -r line; do
 
@@ -171,7 +193,7 @@ if ! $REPORT_ONLY; then
     log "======================================"
     log "Simulation completed."
     log "Log file: $LOG_FILE"
-    log "Waveform GHW: $WAVE_DIR/cpu.ghw"
-    log "Waveform VCD: $WAVE_DIR/cpu.vcd"
+    log "Waveform GHW: $WAVE_DIR/${TB_NAME}.ghw"
+    log "Waveform VCD: $WAVE_DIR/${TB_NAME}.vcd"
     log "======================================"
 fi

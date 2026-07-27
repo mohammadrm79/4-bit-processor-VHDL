@@ -47,7 +47,7 @@ BEGIN
 	u_process_1 : PROCESS (input_a, input_b, select_i)
 	BEGIN
 
-		output_o <= '0'
+		output_o <= (OTHERS => '0');
 		CASE select_i IS
 
 			WHEN '0' =>

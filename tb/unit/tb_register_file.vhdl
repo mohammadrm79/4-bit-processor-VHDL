@@ -1,225 +1,264 @@
--- ============================================================================
--- Project      : RISC-4 Educational CPU
--- File         : tb_register_file.vhdl
--- Description  : Register File Testbench
---
--- Version      : 1.0.0
--- Language     : VHDL-2008
---
--- ============================================================================
+LIBRARY IEEE;
 
+USE IEEE.numeric_std.ALL;
+USE IEEE.std_logic_1164.ALL;
 
-library ieee;
+USE WORK.cpu_pkg.ALL;
 
-use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
+ENTITY tb_register_file IS
+END ENTITY tb_register_file;
 
-use work.cpu_pkg.all;
+ARCHITECTURE sim OF tb_register_file IS
 
+	CONSTANT clk_period : TIME := 10 ns;
 
+	SIGNAL clk   : STD_LOGIC := '0';
+	SIGNAL reset : STD_LOGIC := '0';
 
-entity tb_register_file is
-end entity tb_register_file;
+	SIGNAL write_enable : STD_LOGIC := '0';
 
+	SIGNAL write_address : register_index_t := (OTHERS => '0');
+	SIGNAL write_data    : data_word_t := (OTHERS => '0');
 
+	SIGNAL read_address_a : register_index_t := (OTHERS => '0');
+	SIGNAL read_address_b : register_index_t := (OTHERS => '0');
 
-architecture sim of tb_register_file is
+	SIGNAL read_data_a : data_word_t;
+	SIGNAL read_data_b : data_word_t;
 
+	SIGNAL debug_r0 : data_word_t;
+	SIGNAL debug_r1 : data_word_t;
+	SIGNAL debug_r2 : data_word_t;
+	SIGNAL debug_r3 : data_word_t;
 
-    signal clk : std_logic := '0';
+BEGIN
 
-    signal reset : std_logic := '0';
+	---------------------------------------------------------------------------
+	-- DUT
+	---------------------------------------------------------------------------
 
+	uut : ENTITY WORK.register_file
+	PORT MAP
+	(
+		clk   => clk,
+		reset => reset,
 
+		write_enable  => write_enable,
+		write_address => write_address,
+		write_data    => write_data,
 
-    signal write_enable : std_logic;
+		read_address_a => read_address_a,
+		read_address_b => read_address_b,
 
+		read_data_a => read_data_a,
+		read_data_b => read_data_b,
 
-    signal write_address : register_index_t;
+		debug_r0 => debug_r0,
+		debug_r1 => debug_r1,
+		debug_r2 => debug_r2,
+		debug_r3 => debug_r3
+	);
 
-    signal write_data : data_word_t;
+	---------------------------------------------------------------------------
+	-- Clock
+	---------------------------------------------------------------------------
 
+	clk <= NOT clk AFTER clk_period / 2;
 
+	---------------------------------------------------------------------------
+	-- Stimulus
+	---------------------------------------------------------------------------
 
-    signal read_address_a : register_index_t;
+	stimulus : PROCESS
 
-    signal read_address_b : register_index_t;
+	PROCEDURE run_test (
+		CONSTANT name : STRING
+	) IS
+	BEGIN
+		REPORT "Running Test: " & name
+		SEVERITY NOTE;
+	END PROCEDURE;
 
+BEGIN
 
+	-----------------------------------------------------------------------
+	-- RESET
+	-----------------------------------------------------------------------
 
-    signal read_data_a : data_word_t;
+	run_test("RESET");
 
-    signal read_data_b : data_word_t;
+	reset <= '1';
 
+	WAIT FOR clk_period * 2;
 
+	reset <= '0';
 
-    constant CLK_PERIOD : time := 10 ns;
+	WAIT FOR clk_period;
 
+	ASSERT debug_r0 = "0000" SEVERITY ERROR;
+	ASSERT debug_r1 = "0000" SEVERITY ERROR;
+	ASSERT debug_r2 = "0000" SEVERITY ERROR;
+	ASSERT debug_r3 = "0000" SEVERITY ERROR;
 
+	-----------------------------------------------------------------------
+	-- WRITE R1
+	-----------------------------------------------------------------------
 
-begin
+	run_test("WRITE R1");
 
+	write_enable <= '1';
+	write_address <= "001";
+	write_data <= "0101";
 
-    ---------------------------------------------------------------------------
-    -- Clock Generator
-    ---------------------------------------------------------------------------
+	WAIT UNTIL rising_edge(clk);
 
-    clk <= not clk after CLK_PERIOD / 2;
+	write_enable <= '0';
 
+	WAIT FOR 1 ns;
 
+	ASSERT debug_r1 = "0101"
+	REPORT "Write R1 failed"
+	SEVERITY ERROR;
 
-    ---------------------------------------------------------------------------
-    -- DUT
-    ---------------------------------------------------------------------------
+	-----------------------------------------------------------------------
+	-- READ R1
+	-----------------------------------------------------------------------
 
-    uut : entity work.register_file
+	run_test("READ R1");
 
+	read_address_a <= "001";
 
-        port map
+	WAIT FOR 1 ns;
 
-        (
+	ASSERT read_data_a = "0101"
+	REPORT "Read R1 failed"
+	SEVERITY ERROR;
 
-            clk => clk,
+	-----------------------------------------------------------------------
+	-- WRITE R2
+	-----------------------------------------------------------------------
 
-            reset => reset,
+	run_test("WRITE R2");
 
+	write_enable <= '1';
+	write_address <= "010";
+	write_data <= "1010";
 
-            write_enable => write_enable,
+	WAIT UNTIL rising_edge(clk);
 
+	write_enable <= '0';
 
-            write_address => write_address,
+	WAIT FOR 1 ns;
 
-            write_data => write_data,
+	ASSERT debug_r2 = "1010"
+	REPORT "Write R2 failed"
+	SEVERITY ERROR;
 
+	-----------------------------------------------------------------------
+	-- DUAL READ
+	-----------------------------------------------------------------------
 
-            read_address_a => read_address_a,
+	run_test("DUAL READ");
 
-            read_address_b => read_address_b,
+	read_address_a <= "001";
+	read_address_b <= "010";
 
+	WAIT FOR 1 ns;
 
-            read_data_a => read_data_a,
+	ASSERT read_data_a = "0101"
+	REPORT "Dual Read A failed"
+	SEVERITY ERROR;
 
-            read_data_b => read_data_b
+	ASSERT read_data_b = "1010"
+	REPORT "Dual Read B failed"
+	SEVERITY ERROR;
 
-        );
+	-----------------------------------------------------------------------
+	-- OVERWRITE REGISTER
+	-----------------------------------------------------------------------
 
+	run_test("OVERWRITE R1");
 
+	write_enable <= '1';
+	write_address <= "001";
+	write_data <= "1111";
 
-    ---------------------------------------------------------------------------
-    -- Test Sequence
-    ---------------------------------------------------------------------------
+	WAIT UNTIL rising_edge(clk);
 
-    stimulus : process
+	write_enable <= '0';
 
-    begin
+	WAIT FOR 1 ns;
 
+	ASSERT debug_r1 = "1111"
+	REPORT "Overwrite failed"
+	SEVERITY ERROR;
 
+	-----------------------------------------------------------------------
+	-- WRITE DISABLED
+	-----------------------------------------------------------------------
 
-        -----------------------------------------------------------------------
-        -- Reset Register File
-        -----------------------------------------------------------------------
+	run_test("WRITE DISABLED");
 
-        reset <= '1';
+	write_enable <= '0';
+	write_address <= "001";
+	write_data <= "0000";
 
-        write_enable <= '0';
+	WAIT UNTIL rising_edge(clk);
 
-        wait for CLK_PERIOD;
+	WAIT FOR 1 ns;
 
+	ASSERT debug_r1 = "1111"
+	REPORT "Write Disable failed"
+	SEVERITY ERROR;
 
-        reset <= '0';
+	-----------------------------------------------------------------------
+	-- READ R0
+	-----------------------------------------------------------------------
 
+	run_test("READ R0");
 
+	read_address_a <= "000";
 
-        -----------------------------------------------------------------------
-        -- Write R1 = 5
-        -----------------------------------------------------------------------
+	WAIT FOR 1 ns;
 
-        write_address <= "001";
+	ASSERT read_data_a = "0000"
+	REPORT "Read R0 failed"
+	SEVERITY ERROR;
 
-        write_data <= "0101";
+	-----------------------------------------------------------------------
+	-- RESET AFTER WRITES
+	-----------------------------------------------------------------------
 
-        write_enable <= '1';
+	run_test("RESET AFTER WRITES");
 
+	reset <= '1';
 
-        wait for CLK_PERIOD;
+	WAIT UNTIL rising_edge(clk);
 
+	reset <= '0';
 
-        write_enable <= '0';
+	WAIT FOR 1 ns;
 
+	ASSERT debug_r0 = "0000" SEVERITY ERROR;
+	ASSERT debug_r1 = "0000" SEVERITY ERROR;
+	ASSERT debug_r2 = "0000" SEVERITY ERROR;
+	ASSERT debug_r3 = "0000" SEVERITY ERROR;
 
+	-----------------------------------------------------------------------
+	-- DONE
+	-----------------------------------------------------------------------
 
-        -----------------------------------------------------------------------
-        -- Read R1
-        -----------------------------------------------------------------------
+	REPORT "====================================================="
+	SEVERITY NOTE;
 
-        read_address_a <= "001";
+	REPORT "All Register File tests completed successfully."
+	SEVERITY NOTE;
 
+	REPORT "====================================================="
+	SEVERITY NOTE;
 
-        wait for 5 ns;
+	WAIT;
 
+END PROCESS stimulus;
 
-
-        assert read_data_a = "0101"
-
-        report "Register R1 write/read failed"
-
-        severity error;
-
-
-
-        -----------------------------------------------------------------------
-        -- Write R7 = F
-        -----------------------------------------------------------------------
-
-        write_address <= "111";
-
-        write_data <= "1111";
-
-        write_enable <= '1';
-
-
-        wait for CLK_PERIOD;
-
-
-        write_enable <= '0';
-
-
-
-        -----------------------------------------------------------------------
-        -- Read R7
-        -----------------------------------------------------------------------
-
-        read_address_b <= "111";
-
-
-        wait for 5 ns;
-
-
-
-        assert read_data_b = "1111"
-
-        report "Register R7 write/read failed"
-
-        severity error;
-
-
-
-        -----------------------------------------------------------------------
-        -- Completion
-        -----------------------------------------------------------------------
-
-        report "Register file test completed successfully"
-
-        severity note;
-
-
-
-        wait;
-
-
-
-    end process;
-
-
-
-end architecture sim;
+END ARCHITECTURE sim;
