@@ -1,268 +1,39 @@
 # CPU Architecture Overview
 
-> **Project:** RISC-4 Educational CPU
->
-> **Document:** CPU Architecture Overview
->
-> **Version:** 1.0.0
->
-> **Status:** Frozen
->
-> **Related Documents**
->
-> - ../design_spec.md
-> - ../design_decisions.md
-> - ../isa/overview.md
-> - datapath.md
-> - control_unit.md
-> - memory.md
-> - timing.md
+`system_top` instantiates `cpu_core`. Its public outputs are `halted` and debug copies of R0–R3.
 
----
+## Integrated components
 
-# 1. Purpose
+```text
+PC → instruction_memory → instruction_register → instruction_decoder
+                                              ↓
+register_file → ALU → alu_result_register → write-back selection → register_file
+                    ↓
+               flags_register
 
-This document provides a high-level architectural description of the RISC-4 Educational CPU.
-
-It defines the major hardware components, their responsibilities, and their interactions. The architecture described here serves as the implementation reference for the RTL design.
-
----
-
-# 2. Design Objectives
-
-The processor architecture has been designed with the following goals:
-
-- Educational simplicity
-- Modular implementation
-- Fully synthesizable RTL
-- Clear separation of datapath and control
-- Vendor-independent design
-- Easy verification
-- Easy future extension
-
----
-
-# 3. Architectural Overview
-
-The processor implements a simple multi-cycle RISC architecture.
-
-Key characteristics include:
-
-- 4-bit datapath
-- 16-bit fixed-length instructions
-- Harvard memory architecture
-- Eight general-purpose registers
-- Multi-cycle instruction execution
-- Single clock domain
-- Non-pipelined execution
-
----
-
-# 4. Major Components
-
-The processor consists of the following modules.
-
-| Module | Responsibility |
-|---------|----------------|
-| Program Counter (PC) | Holds the address of the next instruction |
-| Instruction Memory | Stores program instructions |
-| Instruction Register (IR) | Holds the current instruction |
-| Instruction Decoder | Decodes opcode and operands |
-| Register File | Stores general-purpose registers |
-| Arithmetic Logic Unit (ALU) | Executes arithmetic and logical operations |
-| Status Register | Stores processor flags |
-| Data Memory | Stores program data |
-| Control Unit | Controls instruction execution |
-| CPU Top | Integrates all modules |
-
----
-
-# 5. High-Level Block Diagram
-
-```
-                +----------------------+
-                |   Instruction Memory |
-                +----------+-----------+
-                           |
-                           v
-                   +---------------+
-                   | Program Counter|
-                   +-------+-------+
-                           |
-                           v
-                   +---------------+
-                   | Instruction IR|
-                   +-------+-------+
-                           |
-                           v
-                 +-------------------+
-                 | Instruction Decode|
-                 +--------+----------+
-                          |
-          +---------------+----------------+
-          |                                |
-          v                                v
- +----------------+              +----------------+
- | Register File  |<-----------> |      ALU       |
- +--------+-------+              +--------+-------+
-          |                               |
-          +---------------+---------------+
-                          |
-                          v
-                 +------------------+
-                 | Status Register  |
-                 +------------------+
-
-                          |
-                          v
-
-                 +------------------+
-                 |   Data Memory    |
-                 +------------------+
-
-                          ^
-                          |
-                 +------------------+
-                 |   Control Unit   |
-                 +------------------+
+register_file operands → data_memory
+control_fsm → enables, ALU operation, write-back source, halt output
 ```
 
----
+The PC supplies instruction-memory addresses. The instruction register loads during `FETCH`; the PC increments on the same fetch edge. “Write-back selection” is a process in `cpu_core`, not an instantiation of the generic `mux` entity.
 
-# 6. Datapath and Control
+## Architectural state
 
-The processor is organized into two primary subsystems.
+- PC: 11-bit synchronous register.
+- IR: 16-bit synchronous register.
+- Register file: eight 4-bit registers, two combinational read ports, one synchronous write port.
+- ALU result register: captures results for ALU write-back.
+- Flags register: captures Z, C, N, V; only Z and C are connected to control.
+- Data memory: 256 × 4 bits.
 
-## Datapath
+## Not Implemented
 
-Responsible for:
+There is no entity named `cpu_top`, `control_unit`, or `status_register`; those historical names are not current RTL. There is no external memory interface, pipeline, or implemented jump redirection.
 
-- Register transfers
-- Arithmetic operations
-- Logical operations
-- Memory data transfers
+## Revision history
 
-## Control Unit
-
-Responsible for:
-
-- Instruction sequencing
-- Control signal generation
-- Execution stage control
-- Program flow
-
----
-
-# 7. Execution Model
-
-Each instruction progresses through the following stages:
-
-1. Fetch
-2. Decode
-3. Execute
-4. Write Back
-
-Only one instruction is active at any given time.
-
----
-
-# 8. Clocking Strategy
-
-The processor uses:
-
-- Single rising-edge clock
-- Synchronous active-high reset
-- No clock gating
-- No multiple clock domains
-
----
-
-# 9. Memory Organization
-
-The architecture follows the Harvard model.
-
-Instruction memory stores program instructions.
-
-Data memory stores runtime data.
-
-The two memories are independent.
-
----
-
-# 10. Register Organization
-
-The register file contains:
-
-- Eight general-purpose registers
-- Four-bit register width
-- Two combinational read ports
-- One synchronous write port
-
----
-
-# 11. Processor Flags
-
-The Status Register stores:
-
-| Flag | Description |
-|------|-------------|
-| Z | Zero |
-| C | Carry |
-| N | Negative |
-| V | Overflow |
-
----
-
-# 12. Module Interfaces
-
-Primary module communication occurs through:
-
-- Instruction bus
-- Datapath buses
-- Register addresses
-- Memory interface
-- Control signals
-- Status flags
-
----
-
-# 13. RTL Mapping
-
-| Architecture Component | Planned RTL Module |
-|------------------------|--------------------|
-| Program Counter | pc.vhd |
-| Instruction Register | instruction_register.vhd |
-| Instruction Decoder | instruction_decoder.vhd |
-| Register File | register_file.vhd |
-| ALU | alu.vhd |
-| Status Register | status_register.vhd |
-| Control Unit | control_unit.vhd |
-| CPU Top | cpu_top.vhd |
-
----
-
-# 14. Future Extensions
-
-Potential future improvements include:
-
-- Pipeline support
-- Interrupt controller
-- Stack pointer
-- UART
-- GPIO
-- Timer peripherals
-- Extended ALU
-- Memory-mapped I/O
-
----
-
-# 15. References
-
-- Design Specification
-- Design Decisions
-- ISA Documentation
-- Datapath Design
-- Control Unit Design
-- Memory Organization
-- Timing Specification
-```
+| Version | Description |
+|---|---|
+| 1.2.0 | Clarified that write-back selection is not the `mux` entity. |
+| 1.1.0 | Aligned names and connections with `system_top` and `cpu_core`. |
+| 1.0.0 | Initial CPU overview. |

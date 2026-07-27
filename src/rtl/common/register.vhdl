@@ -13,77 +13,64 @@
 --
 -- ============================================================================
 
-library ieee;
+LIBRARY IEEE;
 
-use ieee.std_logic_1164.all;
+USE IEEE.std_logic_1164.ALL;
 
+ENTITY register_n IS
 
-entity register_n is
+	GENERIC
+	(
+		WIDTH : NATURAL := 4
+	);
 
-    generic
-    (
-        WIDTH : natural := 4
-    );
+	PORT
+	(
+		clk   : IN STD_LOGIC;
+		reset : IN STD_LOGIC;
 
-    port
-    (
-        clk     : in  std_logic;
-        reset   : in  std_logic;
+		enable : IN  STD_LOGIC;
 
-        enable  : in  std_logic;
+		data_in  : IN  STD_LOGIC_VECTOR(WIDTH-1 DOWNTO 0);
+		data_out : OUT STD_LOGIC_VECTOR(WIDTH-1 DOWNTO 0)
+	);
 
-        data_in  : in  std_logic_vector(WIDTH-1 downto 0);
-        data_out : out std_logic_vector(WIDTH-1 downto 0)
-    );
+END ENTITY register_n;
 
-end entity register_n;
+ARCHITECTURE rtl OF register_n IS
 
+	SIGNAL reg_data : STD_LOGIC_VECTOR(WIDTH-1 DOWNTO 0);
 
+BEGIN
 
-architecture rtl of register_n is
+	---------------------------------------------------------------------------
+	-- Synchronous Register Logic
+	---------------------------------------------------------------------------
 
-    signal reg_data : std_logic_vector(WIDTH-1 downto 0);
+	u_process_1 : PROCESS (clk)
 
-begin
+	BEGIN
 
+		IF rising_edge(clk) THEN
 
-    ---------------------------------------------------------------------------
-    -- Synchronous Register Logic
-    ---------------------------------------------------------------------------
+			IF reset = '1' THEN
 
-    process(clk)
+				reg_data <= (OTHERS => '0');
 
-    begin
+			ELSIF enable = '1' THEN
 
-        if rising_edge(clk) then
+				reg_data <= data_in;
 
+			END IF;
 
-            if reset = '1' then
+		END IF;
 
-                reg_data <= (others => '0');
+	END PROCESS u_process_1;
 
+	---------------------------------------------------------------------------
+	-- Output Assignment
+	---------------------------------------------------------------------------
 
-            elsif enable = '1' then
+	data_out <= reg_data;
 
-                reg_data <= data_in;
-
-
-            end if;
-
-
-        end if;
-
-
-    end process;
-
-
-
-    ---------------------------------------------------------------------------
-    -- Output Assignment
-    ---------------------------------------------------------------------------
-
-    data_out <= reg_data;
-
-
-
-end architecture rtl;
+END ARCHITECTURE rtl;

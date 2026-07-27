@@ -1,145 +1,20 @@
-# Reports
+# Engineering Reports
 
-This directory contains reports generated during the development, verification, and synthesis of the RISC-4 Educational CPU.
+These documents record the present repository status. They are not evidence of successful verification or synthesis unless explicitly stated.
 
-Unlike the specification documents, the files in this directory record the results of engineering activities performed throughout the project.
+| Report | Current status |
+|---|---|
+| `simulation_report.md` | Documents the configured simulation script and its limitations. |
+| `verification_report.md` | Documents available testbench sources and known static inconsistencies. |
+| `synthesis_report.md` | Documents the synthesis script and reasons no successful result is claimed. |
+| `consistency_validation_report.md` | Records source-to-documentation validation results. |
 
-Most reports are generated after implementation and will evolve during development.
+The root build artifacts/logs are not treated as a validated report because the repository does not provide a reproducible, successful test/synthesis record in Markdown.
 
----
+## Revision history
 
-# Directory Structure
-
-```
-reports/
-│
-├── README.md
-├── simulation_report.md
-├── synthesis_report.md
-└── verification_report.md
-```
-
----
-
-# Report Overview
-
-## simulation_report.md
-
-Summarizes the complete simulation process.
-
-Typical contents include:
-
-- Simulator version
-- Testbench executed
-- Simulation command
-- Execution results
-- Waveform generation
-- Observed behavior
-- Known issues
-
----
-
-## verification_report.md
-
-Summarizes functional verification.
-
-Topics include:
-
-- Unit test results
-- Integration tests
-- System tests
-- Pass/Fail summary
-- Coverage observations
-- Remaining issues
-
----
-
-## synthesis_report.md
-
-Summarizes synthesis results.
-
-Topics include:
-
-- Toolchain versions
-- Synthesis configuration
-- Target technology
-- Resource utilization
-- Timing information
-- Warnings
-- Synthesis status
-
----
-
-# Report Lifecycle
-
-Reports are generated during the following development phases:
-
-```
-RTL Development
-        │
-        ▼
-Verification
-        │
-        ▼
-Simulation
-        │
-        ▼
-Synthesis
-        │
-        ▼
-Final Report
-```
-
----
-
-# Report Requirements
-
-Every report should contain:
-
-- Title
-- Date
-- Tool versions
-- Procedure
-- Results
-- Conclusions
-- Revision history
-
-Reports should be reproducible and based on documented commands whenever possible.
-
----
-
-# Related Documents
-
-Project specification:
-
-- ../design_spec.md
-
-Architecture documentation:
-
-- ../architecture/
-
-ISA documentation:
-
-- ../isa/
-
-Development roadmap:
-
-- ../roadmap.md
-
----
-
-# Document Status
-
-Current Version:
-
-```
-1.0.0
-```
-
-Status:
-
-```
-Active
-```
-
-The report templates in this directory will be completed as implementation progresses.
+| Version | Description |
+|---|---|
+| 1.2.0 | Added the consistency-validation report. |
+| 1.1.0 | Replaced empty report placeholders with status documentation. |
+| 1.0.0 | Initial reports index. |

@@ -13,79 +13,65 @@
 --
 -- ============================================================================
 
-library ieee;
+LIBRARY IEEE;
 
-use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
+USE IEEE.numeric_std.ALL;
+USE IEEE.std_logic_1164.ALL;
 
+ENTITY counter IS
 
+	GENERIC
+	(
+		WIDTH : NATURAL := 4
+	);
 
-entity counter is
+	PORT
+	(
+		clk   : IN STD_LOGIC;
+		reset : IN STD_LOGIC;
 
-    generic
-    (
-        WIDTH : natural := 4
-    );
+		enable : IN STD_LOGIC;
 
-    port
-    (
-        clk     : in std_logic;
-        reset   : in std_logic;
+		count_in  : IN  STD_LOGIC_VECTOR(WIDTH-1 DOWNTO 0);
+		count_out : OUT STD_LOGIC_VECTOR(WIDTH-1 DOWNTO 0)
+	);
 
-        enable  : in std_logic;
+END ENTITY counter;
 
-        count_in  : in std_logic_vector(WIDTH-1 downto 0);
-        count_out : out std_logic_vector(WIDTH-1 downto 0)
-    );
+ARCHITECTURE rtl OF counter IS
 
-end entity counter;
+	SIGNAL counter_reg : STD_LOGIC_VECTOR(WIDTH-1 DOWNTO 0);
 
+BEGIN
 
+	---------------------------------------------------------------------------
+	-- Counter Register Logic
+	---------------------------------------------------------------------------
 
-architecture rtl of counter is
+	u_process_1 : PROCESS (clk)
 
-    signal counter_reg : std_logic_vector(WIDTH-1 downto 0);
+	BEGIN
 
-begin
+		IF rising_edge(clk) THEN
 
+			IF reset = '1' THEN
 
-    ---------------------------------------------------------------------------
-    -- Counter Register Logic
-    ---------------------------------------------------------------------------
+				counter_reg <= (OTHERS => '0');
 
-    process(clk)
+			ELSIF enable = '1' THEN
 
-    begin
+				counter_reg <= count_in;
 
-        if rising_edge(clk) then
+			END IF;
 
+		END IF;
 
-            if reset = '1' then
+	END PROCESS u_process_1;
 
-                counter_reg <= (others => '0');
+	---------------------------------------------------------------------------
+	-- Output Assignment
+	---------------------------------------------------------------------------
 
+	count_out <= counter_reg;
 
-            elsif enable = '1' then
-
-                counter_reg <= count_in;
-
-
-            end if;
-
-
-        end if;
-
-
-    end process;
-
-
-
-    ---------------------------------------------------------------------------
-    -- Output Assignment
-    ---------------------------------------------------------------------------
-
-    count_out <= counter_reg;
-
-
-
-end architecture rtl;
+END ARCHITECTURE rtl;

@@ -1,11 +1,11 @@
 # Changelog
 
-## v0.1.0
+## v1.0.0 — Documentation alignment
 
-Initial Repository
+- Aligned ISA, architecture, timing, memory, and verification documentation with the current VHDL implementation.
+- Recorded implemented `SHL` and `SHR`; removed claims that `CMP` and `JNZ` are implemented.
+- Recorded current control-flow, memory-addressing, build, and testbench limitations.
 
-Project Structure
+## v0.1.0 — Initial repository
 
-License
-
-Git Ignore
+- Repository structure, license, and Git ignore configuration established.

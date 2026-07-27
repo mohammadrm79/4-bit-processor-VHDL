@@ -12,72 +12,58 @@
 --
 -- ============================================================================
 
+LIBRARY IEEE;
 
-library ieee;
+USE IEEE.std_logic_1164.ALL;
 
-use ieee.std_logic_1164.all;
+ENTITY mux IS
 
+	GENERIC
+	(
+		WIDTH : NATURAL := 4
+	);
 
+	PORT
+	(
+		input_a : IN STD_LOGIC_VECTOR(WIDTH-1 DOWNTO 0);
 
-entity mux is
+		input_b : IN STD_LOGIC_VECTOR(WIDTH-1 DOWNTO 0);
 
-    generic
-    (
-        WIDTH : natural := 4
-    );
+		select_i : IN STD_LOGIC;
 
-    port
-    (
-        input_a : in std_logic_vector(WIDTH-1 downto 0);
+		output_o : OUT STD_LOGIC_VECTOR(WIDTH-1 DOWNTO 0)
+	);
 
-        input_b : in std_logic_vector(WIDTH-1 downto 0);
+END ENTITY mux;
 
-        select_i : in std_logic;
+ARCHITECTURE rtl OF mux IS
 
-        output_o : out std_logic_vector(WIDTH-1 downto 0)
-    );
+BEGIN
 
-end entity mux;
+	---------------------------------------------------------------------------
+	-- Combinational Multiplexer Logic
+	---------------------------------------------------------------------------
 
+	u_process_1 : PROCESS (input_a, input_b, select_i)
+	BEGIN
 
+		output_o <= '0'
+		CASE select_i IS
 
-architecture rtl of mux is
+			WHEN '0' =>
 
-begin
+				output_o <= input_a;
 
+			WHEN '1' =>
 
-    ---------------------------------------------------------------------------
-    -- Combinational Multiplexer Logic
-    ---------------------------------------------------------------------------
+				output_o <= input_b;
 
-    process(input_a, input_b, select_i)
+			WHEN OTHERS =>
 
-    begin
+				output_o <= (OTHERS => '0');
 
+		END CASE;
 
-        case select_i is
+	END PROCESS u_process_1;
 
-
-            when '0' =>
-
-                output_o <= input_a;
-
-
-            when '1' =>
-
-                output_o <= input_b;
-
-
-            when others =>
-
-                output_o <= (others => '0');
-
-
-        end case;
-
-
-    end process;
-
-
-
-end architecture rtl;
+END ARCHITECTURE rtl;
