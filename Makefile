@@ -1,9 +1,21 @@
-make sim
+.PHONY: all lint sim test synth clean asm
 
-make synth
+all: clean test synth
 
-make clean
+lint:
+	./scripts/lint.sh
 
-make lint
+asm:
+	./scripts/assembler.sh
 
-make wave
+sim:
+	./scripts/sim.sh
+
+test:
+	./scripts/test.sh
+
+synth:
+	./scripts/synth.sh
+
+clean:
+	./scripts/clean.sh

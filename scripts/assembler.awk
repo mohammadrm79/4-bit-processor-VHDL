@@ -218,19 +218,41 @@ function hex4(v)
     # JMP / JZ / JC
     #
     # JMP LOOP
-    # JZ END
+    # JMP 15
     ###########################################################################
 
     if(inst=="JMP" ||
-       inst=="JZ"  ||
-       inst=="JC")
+    inst=="JZ"  ||
+    inst=="JC")
     {
-        jump_target[pc] = $2
-        jump_opcode[pc] = opcode[inst]
+        target = $2
 
-        code[pc] = -1
+        # Numeric address
+        if(target ~ /^[0-9]+$/)
+        {
+            addr = target + 0
 
-        pc++
+            if(addr < 0 || addr > 255)
+            {
+                print "Assembler error: Jump address out of range:", addr > "/dev/stderr"
+                exit 1
+            }
+
+            word = \
+                opcode[inst] * 2048 + \
+                addr
+
+            code[pc++] = word
+        }
+        else
+        {
+            # Label (resolved in second pass)
+            jump_target[pc] = target
+            jump_opcode[pc] = opcode[inst]
+
+            code[pc] = -1
+            pc++
+        }
 
         next
     }
@@ -291,8 +313,14 @@ END {
 
         addr = labels[label]
 
-        code[i] =\
-            jump_opcode[i] * 2048 +\
+        if(addr < 0 || addr > 255)
+        {
+            print "Assembler error: Jump address out of range:", addr > "/dev/stderr"
+            exit 1
+        }
+
+        code[i] = \
+            jump_opcode[i] * 2048 + \
             addr
     }
 

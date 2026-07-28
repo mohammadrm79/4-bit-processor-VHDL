@@ -275,25 +275,20 @@ BEGIN
 						memory_write_enable <= '1';
 
 					WHEN OP_JMP =>
-
+						pc_enable <= '1';
 						pc_load <= '1';
 
 					WHEN OP_JZ =>
-
 						IF zero_flag = '1' THEN
-
+							pc_enable <= '1';
 							pc_load <= '1';
-
 						END IF;
 
 					WHEN OP_JC =>
-
 						IF carry_flag = '1' THEN
-
+							pc_enable <= '1';
 							pc_load <= '1';
-
 						END IF;
-
 					WHEN OP_HALT =>
 
 						NULL;

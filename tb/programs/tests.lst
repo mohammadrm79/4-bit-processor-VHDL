@@ -12,3 +12,6 @@ shr
 store
 load
 load_store
+jump
+jz
+jc
