@@ -1,0 +1,8 @@
+; Test STORE
+
+MOVI R0,5
+MOVI R1,3
+
+STORE R0,R1
+
+HALT

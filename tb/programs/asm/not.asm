@@ -1,0 +1,7 @@
+; Test NOT
+
+MOVI R0,5
+
+NOT R1,R0
+
+HALT

@@ -1,0 +1,13 @@
+; Test JZ
+
+MOVI R0,5
+
+SUB R1,R0,R0
+
+JZ 5
+
+MOVI R2,1
+
+MOVI R2,7
+
+HALT

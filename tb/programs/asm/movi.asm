@@ -1,0 +1,6 @@
+; movi.asm
+
+MOVI R0,5
+MOVI R1,10
+MOVI R2,15
+HALT

@@ -1,0 +1,14 @@
+movi
+add
+sub
+inc
+dec
+and
+or
+xor
+not
+shl
+shr
+store
+load
+load_store

@@ -21,143 +21,110 @@
 --
 -- ============================================================================
 
+LIBRARY IEEE;
 
-library ieee;
+USE IEEE.numeric_std.ALL;
+USE IEEE.std_logic_1164.ALL;
 
-use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
+USE WORK.cpu_pkg.ALL;
 
-use work.cpu_pkg.all;
+ENTITY data_memory IS
 
+	GENERIC
+	(
+		DEPTH : NATURAL := 256
+	);
 
+	PORT
+	(
+		clk   : IN STD_LOGIC;
+		reset : IN STD_LOGIC;
 
-entity data_memory is
+		address : IN address_t;
 
-    generic
-    (
-        DEPTH : natural := 256
-    );
+		write_enable : IN STD_LOGIC;
 
-    port
-    (
-        clk   : in std_logic;
-        reset : in std_logic;
+		write_data : IN data_word_t;
 
+		read_data : OUT data_word_t
 
-        address : in address_t;
+	);
 
+END ENTITY data_memory;
 
-        write_enable : in std_logic;
+ARCHITECTURE rtl OF data_memory IS
 
-        write_data : in data_word_t;
+	TYPE memory_array_t IS ARRAY
+	(
+		0 TO DEPTH-1
+	)
+	OF data_word_t;
 
+	SIGNAL memory : memory_array_t :=
+	(
+		OTHERS => (OTHERS => '0')
+	);
 
-        read_data : out data_word_t
+BEGIN
 
-    );
+	---------------------------------------------------------------------------
+	-- Memory Write Logic
+	---------------------------------------------------------------------------
 
-end entity data_memory;
+	u_process_1 : PROCESS (clk)
 
+	BEGIN
 
+		IF rising_edge(clk) THEN
 
-architecture rtl of data_memory is
+			IF reset = '1' THEN
 
+				FOR i IN 0 TO DEPTH-1 LOOP
 
-    type memory_array_t is array
-    (
-        0 to DEPTH-1
-    )
-    of data_word_t;
+					memory(i) <= (OTHERS => '0');
 
+				END LOOP;
 
+				ELSIF write_enable = '1' THEN
 
-    signal memory : memory_array_t :=
-    (
-        others => (others => '0')
-    );
+					IF is_x(address) = false THEN
 
+						IF to_integer(UNSIGNED(address)) < DEPTH THEN
 
+							memory(
+								to_integer(UNSIGNED(address))
+							) <= write_data;
 
-begin
+						END IF;
 
+					END IF;
+				END IF;
 
-    ---------------------------------------------------------------------------
-    -- Memory Write Logic
-    ---------------------------------------------------------------------------
+			END IF;
 
-    process(clk)
+		END PROCESS u_process_1;
 
-    begin
+		---------------------------------------------------------------------------
+		-- Memory Read Logic
+		---------------------------------------------------------------------------
 
+		u_process_2 : PROCESS (address, memory)
 
-        if rising_edge(clk) then
+		BEGIN
 
+			read_data <= (OTHERS => '0');
 
-            if reset = '1' then
+			IF is_x(address) = false THEN
 
+				IF to_integer(UNSIGNED(address)) < DEPTH THEN
 
-                for i in 0 to DEPTH-1 loop
+					read_data <= memory(
+						to_integer(UNSIGNED(address))
+					);
 
-                    memory(i) <= (others => '0');
+				END IF;
 
-                end loop;
+			END IF;
+		END PROCESS u_process_2;
 
-
-
-            elsif write_enable = '1' then
-
-
-                if to_integer(unsigned(address)) < DEPTH then
-
-
-                    memory(
-                        to_integer(unsigned(address))
-                    )
-                    <= write_data;
-
-
-                end if;
-
-
-
-            end if;
-
-
-        end if;
-
-
-    end process;
-
-
-
-    ---------------------------------------------------------------------------
-    -- Memory Read Logic
-    ---------------------------------------------------------------------------
-
-    process(address)
-
-    begin
-
-
-        if to_integer(unsigned(address)) < DEPTH then
-
-
-            read_data <= memory(
-                to_integer(unsigned(address))
-            );
-
-
-        else
-
-
-            read_data <= (others => '0');
-
-
-        end if;
-
-
-    end process;
-
-
-
-end architecture rtl;
+	END ARCHITECTURE rtl;

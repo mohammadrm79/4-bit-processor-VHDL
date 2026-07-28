@@ -1,0 +1,10 @@
+; Test JUMP
+
+JMP 3
+
+MOVI R0,1
+MOVI R1,2
+
+MOVI R2,5
+
+HALT

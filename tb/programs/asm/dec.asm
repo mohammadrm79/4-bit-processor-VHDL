@@ -1,0 +1,7 @@
+; Test DEC
+
+MOVI R0,5
+
+DEC R1,R0
+
+HALT

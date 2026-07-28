@@ -1,0 +1,7 @@
+; Test LOAD
+
+MOVI R1,3
+
+LOAD R2,R1
+
+HALT

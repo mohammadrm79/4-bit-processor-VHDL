@@ -1,0 +1,8 @@
+; Test SUB
+
+MOVI R0,9
+MOVI R1,4
+
+SUB R2,R0,R1
+
+HALT

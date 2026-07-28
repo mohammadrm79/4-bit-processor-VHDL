@@ -1,0 +1,7 @@
+; Test SHL
+
+MOVI R0,5
+
+SHL R1,R0
+
+HALT

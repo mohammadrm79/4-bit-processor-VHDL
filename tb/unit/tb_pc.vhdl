@@ -1,197 +1,180 @@
--- ============================================================================
--- Project      : RISC-4 Educational CPU
--- File         : tb_pc.vhdl
--- Description  : Program Counter Unit Testbench
---
--- Version      : 1.0.0
--- Language     : VHDL-2008
---
--- ============================================================================
+LIBRARY IEEE;
 
+USE IEEE.numeric_std.ALL;
+USE IEEE.std_logic_1164.ALL;
 
-library ieee;
-use ieee.numeric_std.all;
-use ieee.std_logic_1164.all;
+USE WORK.cpu_pkg.ALL;
 
-use work.cpu_pkg.all;
+ENTITY tb_pc IS
+END ENTITY tb_pc;
 
+ARCHITECTURE sim OF tb_pc IS
 
+	SIGNAL clk   : STD_LOGIC := '0';
+	SIGNAL reset : STD_LOGIC := '0';
 
-entity tb_pc is
+	SIGNAL enable : STD_LOGIC := '0';
+	SIGNAL load   : STD_LOGIC := '0';
 
-end entity tb_pc;
+	SIGNAL next_address : address_t := (OTHERS => '0');
 
+	SIGNAL pc_value : address_t;
 
+	CONSTANT CLK_PERIOD : TIME := 10 ns;
 
-architecture sim of tb_pc is
+	PROCEDURE run_test(
+		CONSTANT name : STRING
+	) IS
+	BEGIN
+		REPORT "Running Test: " & name
+		SEVERITY NOTE;
+	END PROCEDURE;
 
+BEGIN
 
-    ---------------------------------------------------------------------------
-    -- DUT Signals
-    ---------------------------------------------------------------------------
+	uut : ENTITY WORK.pc
+	PORT MAP
+	(
+		clk          => clk,
+		reset        => reset,
+		enable       => enable,
+		load         => load,
+		next_address => next_address,
+		pc_value     => pc_value
+	);
 
-    signal clk : std_logic := '0';
+	clk_process : PROCESS
+	BEGIN
+		LOOP
+			clk <= '0';
+			WAIT FOR CLK_PERIOD / 2;
+			clk <= '1';
+			WAIT FOR CLK_PERIOD / 2;
+		END LOOP;
+		END PROCESS clk_process;
 
-    signal reset : std_logic := '0';
+		stimulus : PROCESS
+		BEGIN
 
+			-----------------------------------------------------------------------
+			-- RESET
+			-----------------------------------------------------------------------
 
-    signal enable : std_logic := '0';
+			run_test("RESET");
 
-    signal load : std_logic := '0';
+			reset <= '1';
+			enable <= '0';
+			load <= '0';
 
+			WAIT UNTIL rising_edge(clk);
+			WAIT FOR 1 ns;
 
-    signal next_address : address_t;
+			ASSERT pc_value = address_t'(OTHERS => '0')
+			REPORT "RESET failed"
+			SEVERITY ERROR;
 
-    signal pc_value : address_t;
+			reset <= '0';
 
+			-----------------------------------------------------------------------
+			-- INCREMENT 1
+			-----------------------------------------------------------------------
 
+			run_test("INCREMENT TO 1");
 
-    constant CLK_PERIOD : time := 10 ns;
+			enable <= '1';
 
+			WAIT UNTIL rising_edge(clk);
+			WAIT FOR 1 ns;
 
+			ASSERT UNSIGNED(pc_value) = 1
+			REPORT "Increment to 1 failed"
+			SEVERITY ERROR;
 
-begin
+			-----------------------------------------------------------------------
+			-- INCREMENT 2
+			-----------------------------------------------------------------------
 
+			run_test("INCREMENT TO 2");
 
-    ---------------------------------------------------------------------------
-    -- Clock Generator
-    ---------------------------------------------------------------------------
+			WAIT UNTIL rising_edge(clk);
+			WAIT FOR 1 ns;
 
-    clk <= not clk after CLK_PERIOD / 2;
+			ASSERT UNSIGNED(pc_value) = 2
+			REPORT "Increment to 2 failed"
+			SEVERITY ERROR;
 
+			-----------------------------------------------------------------------
+			-- LOAD ADDRESS
+			-----------------------------------------------------------------------
 
+			run_test("LOAD ADDRESS");
 
-    ---------------------------------------------------------------------------
-    -- DUT
-    ---------------------------------------------------------------------------
+			load <= '1';
+			next_address <= STD_LOGIC_VECTOR(to_unsigned(10, ADDRESS_WIDTH));
 
-    uut : entity work.pc
+			WAIT UNTIL rising_edge(clk);
+			WAIT FOR 1 ns;
 
-        port map
-        (
+			ASSERT UNSIGNED(pc_value) = 10
+			REPORT "Load failed"
+			SEVERITY ERROR;
 
-            clk => clk,
+			load <= '0';
 
-            reset => reset,
+			-----------------------------------------------------------------------
+			-- INCREMENT AFTER LOAD
+			-----------------------------------------------------------------------
 
-            enable => enable,
+			run_test("INCREMENT AFTER LOAD");
 
-            load => load,
+			WAIT UNTIL rising_edge(clk);
+			WAIT FOR 1 ns;
 
-            next_address => next_address,
+			ASSERT UNSIGNED(pc_value) = 11
+			REPORT "Increment after load failed"
+			SEVERITY ERROR;
 
-            pc_value => pc_value
+			-----------------------------------------------------------------------
+			-- ENABLE LOW
+			-----------------------------------------------------------------------
 
-        );
+			run_test("ENABLE LOW");
 
+			enable <= '0';
 
+			WAIT UNTIL rising_edge(clk);
+			WAIT FOR 1 ns;
 
-    ---------------------------------------------------------------------------
-    -- Test Sequence
-    ---------------------------------------------------------------------------
+			ASSERT UNSIGNED(pc_value) = 11
+			REPORT "PC changed while enable=0"
+			SEVERITY ERROR;
 
-    stimulus : process
+			-----------------------------------------------------------------------
+			-- RESET AGAIN
+			-----------------------------------------------------------------------
 
-    begin
+			run_test("RESET AFTER OPERATION");
 
+			reset <= '1';
 
+			WAIT UNTIL rising_edge(clk);
+			WAIT FOR 1 ns;
 
-        -----------------------------------------------------------------------
-        -- Reset Test
-        -----------------------------------------------------------------------
+			ASSERT pc_value = address_t'(OTHERS => '0')
+			REPORT "Second reset failed"
+			SEVERITY ERROR;
 
-        reset <= '1';
+			REPORT "====================================================="
+			SEVERITY NOTE;
 
-        wait for CLK_PERIOD;
+			REPORT "All PC tests completed successfully."
+			SEVERITY NOTE;
 
+			REPORT "====================================================="
+			SEVERITY NOTE;
 
-        reset <= '0';
+			WAIT;
 
+		END PROCESS stimulus;
 
-
-        assert pc_value = RESET_VECTOR
-
-        report "PC reset failed"
-
-        severity error;
-
-
-
-        -----------------------------------------------------------------------
-        -- Increment Test
-        -----------------------------------------------------------------------
-
-        enable <= '1';
-
-        load <= '0';
-
-
-        wait for CLK_PERIOD;
-
-
-
-        assert unsigned(pc_value) =
-               unsigned(RESET_VECTOR) + 1
-
-        report "PC increment failed"
-
-        severity error;
-
-
-
-        -----------------------------------------------------------------------
-        -- Second Increment
-        -----------------------------------------------------------------------
-
-        wait for CLK_PERIOD;
-
-
-
-        assert unsigned(pc_value) =
-               unsigned(RESET_VECTOR) + 2
-
-        report "PC second increment failed"
-
-        severity error;
-
-
-
-        -----------------------------------------------------------------------
-        -- Load Address Test
-        -----------------------------------------------------------------------
-
-        load <= '1';
-
-        next_address <= "1010";
-
-
-        wait for CLK_PERIOD;
-
-
-
-        assert pc_value = "1010"
-
-        report "PC load failed"
-
-        severity error;
-
-
-
-        -----------------------------------------------------------------------
-        -- Finish
-        -----------------------------------------------------------------------
-
-        report "PC test completed successfully"
-
-        severity note;
-
-
-
-        wait;
-
-
-    end process;
-
-
-
-end architecture sim;
+	END ARCHITECTURE sim;

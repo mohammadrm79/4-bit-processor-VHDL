@@ -351,14 +351,14 @@ BEGIN
 
 		END CASE;
 
-		REPORT
-		"STATE="
-		& cpu_state_t'image(current_state)
-		& " OPCODE="
-		& INTEGER'image(to_integer(UNSIGNED(opcode)))
-		& " WB_EN="
-		& STD_LOGIC'image(register_write_enable)
-		SEVERITY NOTE;
+		-- REPORT
+		-- "STATE="
+		-- & cpu_state_t'image(current_state)
+		-- & " OPCODE="
+		-- & INTEGER'image(to_integer(UNSIGNED(opcode)))
+		-- & " WB_EN="
+		-- & STD_LOGIC'image(register_write_enable)
+		-- SEVERITY NOTE;
 	END PROCESS u_process_3;
 
 	state_out <= current_state;

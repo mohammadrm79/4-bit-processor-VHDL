@@ -1,0 +1,7 @@
+; Test INC
+
+MOVI R0,5
+
+INC R1,R0
+
+HALT

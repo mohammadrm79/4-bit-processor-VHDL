@@ -1,175 +1,161 @@
 -- ============================================================================
 -- Project      : RISC-4 Educational CPU
 -- File         : tb_cpu.vhdl
--- Description  : CPU Core Integration Testbench
+-- Description  : Generic CPU Integration Testbench
 --
--- Version      : 2.1.0
--- Description  :
---   Added execution timeout protection
---   Added register debug reports
---   Improved ADD validation
---
+-- Runs one program and prints the final CPU state.
+-- Result comparison is performed by an external script.
 -- ============================================================================
 
-LIBRARY ieee;
+LIBRARY IEEE;
 
-USE ieee.std_logic_1164.ALL;
+USE IEEE.numeric_std.ALL;
+USE IEEE.std_logic_1164.ALL;
 
-USE ieee.numeric_std.ALL;
-
-USE work.cpu_pkg.ALL;
+USE WORK.cpu_pkg.ALL;
 
 ENTITY tb_cpu IS
 
-END ENTITY tb_cpu;
+	GENERIC
+	(
+		PROGRAM_FILE : STRING := "tb/programs/bin/movi.mem"
+	);
+
+END ENTITY;
 
 ARCHITECTURE sim OF tb_cpu IS
 
-    SIGNAL clk : STD_LOGIC := '0';
+	CONSTANT CLK_PERIOD : TIME := 10 ns;
 
-    SIGNAL reset : STD_LOGIC := '1';
+	SIGNAL clk   : STD_LOGIC := '0';
+	SIGNAL reset : STD_LOGIC := '1';
 
-    SIGNAL halted : STD_LOGIC;
+	SIGNAL halted : STD_LOGIC;
 
-    SIGNAL debug_r0 : data_word_t;
-
-    SIGNAL debug_r1 : data_word_t;
-
-    SIGNAL debug_r2 : data_word_t;
-
-    SIGNAL debug_r3 : data_word_t;
-
-    CONSTANT CLK_PERIOD : TIME := 10 ns;
-
-    -- CONSTANT MAX_EXECUTION_TIME : TIME := 500 ns;
+	SIGNAL debug_zero  : STD_LOGIC;
+	SIGNAL debug_carry : STD_LOGIC;
+	SIGNAL debug_pc    : address_t;
+	SIGNAL debug_r0    : data_word_t;
+	SIGNAL debug_r1    : data_word_t;
+	SIGNAL debug_r2    : data_word_t;
+	SIGNAL debug_r3    : data_word_t;
 
 BEGIN
 
-    ---------------------------------------------------------------------------
-    -- Clock Generator
-    ---------------------------------------------------------------------------
+	---------------------------------------------------------------------------
+	-- Clock
+	---------------------------------------------------------------------------
 
-    clk_process : PROCESS
+	clk_process : PROCESS
+	BEGIN
 
-    BEGIN
+		LOOP
 
-        LOOP
+			clk <= '0';
+			WAIT FOR CLK_PERIOD / 2;
 
-            clk <= '0';
+			clk <= '1';
+			WAIT FOR CLK_PERIOD / 2;
 
-            WAIT FOR CLK_PERIOD / 2;
+		END LOOP;
 
-            clk <= '1';
+		END PROCESS clk_process;
 
-            WAIT FOR CLK_PERIOD / 2;
+		---------------------------------------------------------------------------
+		-- DUT
+		---------------------------------------------------------------------------
 
-        END LOOP;
+		uut : ENTITY WORK.system_top
 
-    END PROCESS;
+		GENERIC MAP
+		(
+			PROGRAM_FILE => PROGRAM_FILE
+		)
 
-    ---------------------------------------------------------------------------
-    -- DUT
-    ---------------------------------------------------------------------------
+		PORT MAP
+		(
+			clk   => clk,
+			reset => reset,
 
-    uut : ENTITY work.system_top
+			halted => halted,
 
-        PORT MAP
-        (
+			debug_pc => debug_pc,
 
-            clk => clk,
+			debug_zero  => debug_zero,
+			debug_carry => debug_carry,
 
-            reset => reset,
+			debug_r0 => debug_r0,
+			debug_r1 => debug_r1,
+			debug_r2 => debug_r2,
+			debug_r3 => debug_r3
+		);
 
-            halted => halted,
+		---------------------------------------------------------------------------
+		-- Test
+		---------------------------------------------------------------------------
 
-            debug_r0 => debug_r0,
+		stimulus : PROCESS
+		BEGIN
 
-            debug_r1 => debug_r1,
+			---------------------------------------------------------------
+			-- Reset
+			---------------------------------------------------------------
 
-            debug_r2 => debug_r2,
+			reset <= '1';
 
-            debug_r3 => debug_r3
+			WAIT FOR CLK_PERIOD * 5;
 
-        );
+			reset <= '0';
 
-    ---------------------------------------------------------------------------
-    -- Test Sequence
-    ---------------------------------------------------------------------------
+			---------------------------------------------------------------
+			-- Wait until CPU halts
+			---------------------------------------------------------------
 
-    stimulus : PROCESS
+			WAIT UNTIL halted = '1';
 
-    BEGIN
+			---------------------------------------------------------------
+			-- Dump CPU state
+			---------------------------------------------------------------
+			REPORT "----------------------------------------";
 
-        -----------------------------------------------------------------------
-        -- Reset CPU
-        -----------------------------------------------------------------------
+			REPORT "HALTED=1";
 
-        reset <= '1';
+			REPORT "";
 
-        WAIT FOR CLK_PERIOD * 5;
+			REPORT "PC=" &
+			INTEGER'image(to_integer(UNSIGNED(debug_pc)));
 
-        reset <= '0';
+			REPORT "";
 
-        -----------------------------------------------------------------------
-        -- Execution Timeout
-        -----------------------------------------------------------------------
+			REPORT "REG[0]=" &
+			to_hstring(debug_r0);
 
-        WAIT UNTIL halted = '1';
+			REPORT "REG[1]=" &
+			to_hstring(debug_r1);
 
-        ASSERT halted = '1'
+			REPORT "REG[2]=" &
+			to_hstring(debug_r2);
 
-        REPORT "CPU did not reach HALTED state"
+			REPORT "REG[3]=" &
+			to_hstring(debug_r3);
 
-            SEVERITY error;
+			REPORT "";
 
-        -----------------------------------------------------------------------
-        -- Register Debug
-        -----------------------------------------------------------------------
+			IF debug_zero = '1' THEN
+				REPORT "FLAG[ZERO]=1";
+			ELSE
+				REPORT "FLAG[ZERO]=0";
+			END IF;
 
-        REPORT "Register Values:";
+			IF debug_carry = '1' THEN
+				REPORT "FLAG[CARRY]=1";
+			ELSE
+				REPORT "FLAG[CARRY]=0";
+			END IF;
 
-        REPORT "R0 = " &
-            INTEGER'image(to_integer(unsigned(debug_r0)));
+			REPORT "----------------------------------------";
 
-        REPORT "R1 = " &
-            INTEGER'image(to_integer(unsigned(debug_r1)));
+			WAIT;
+		END PROCESS stimulus;
 
-        REPORT "R2 = " &
-            INTEGER'image(to_integer(unsigned(debug_r2)));
-
-        REPORT "R3 = " &
-            INTEGER'image(to_integer(unsigned(debug_r3)));
-
-        -----------------------------------------------------------------------
-        -- ADD Verification
-        -----------------------------------------------------------------------
-
-        ASSERT debug_r3 = "1000"
-
-        REPORT "ADD result incorrect. Expected R3 = 8"
-
-            SEVERITY error;
-
-        -----------------------------------------------------------------------
-        -- Register Integrity
-        -----------------------------------------------------------------------
-
-        ASSERT debug_r0 = "0000"
-
-        REPORT "R0 modified unexpectedly"
-
-            SEVERITY error;
-
-        -----------------------------------------------------------------------
-        -- Finish
-        -----------------------------------------------------------------------
-
-        REPORT "ADD integration test completed successfully"
-
-            SEVERITY note;
-
-        WAIT;
-
-    END PROCESS;
-
-END ARCHITECTURE sim;
+	END ARCHITECTURE;

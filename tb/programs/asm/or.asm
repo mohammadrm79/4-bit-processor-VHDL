@@ -1,0 +1,8 @@
+; Test OR
+
+MOVI R0,12
+MOVI R1,10
+
+OR R2,R0,R1
+
+HALT

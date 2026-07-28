@@ -1,0 +1,11 @@
+HALTED=1
+
+PC=4
+
+REG[0]=9
+REG[1]=4
+REG[2]=5
+REG[3]=0
+
+FLAG[ZERO]=0
+FLAG[CARRY]=0
