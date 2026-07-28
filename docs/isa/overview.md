@@ -22,9 +22,9 @@ R-type operations write `Rd[10:8]` and read `Rs1[7:5]` and `Rs2[4:2]`. `INC`, `D
 
 `MOVI` writes `immediate[3:0]`. In the integrated memory datapath, `LOAD` reads from the address held in `Rs2`, and `STORE` writes `Rs1` to that address. The immediate is not used as a memory address.
 
-## Control-flow status
+## Control flow
 
-`JMP`, `JZ`, and `JC` have allocated opcodes and the FSM asserts `pc_load` for them. Because PC enable is not asserted during execute, their jump target is not loaded. They are therefore **Not Functionally Implemented** as control transfers.
+`JMP` loads `address[10:0]` into the PC in execute. `JZ` and `JC` load that target when the registered Z or C flag is set. The PC was incremented in the preceding fetch state, so a non-taken conditional branch continues with the following sequential instruction; there is no delay slot.
 
 ## Reserved for Future Version
 

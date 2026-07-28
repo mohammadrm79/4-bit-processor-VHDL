@@ -1,20 +1,11 @@
 # Processor Architecture
 
-Architecture documentation describes the integrated `system_top` → `cpu_core` implementation.
+These documents describe the implemented `system_top` → `cpu_core` integration.
 
-| Document | Subject |
-|---|---|
-| `cpu_overview.md` | Entities and high-level connections |
-| `datapath.md` | Register, ALU, write-back, and operand paths |
-| `control_unit.md` | `control_fsm` states and outputs |
-| `memory.md` | Actual memory models and addressing |
-| `timing.md` | Clocked state and data-update timing |
+- [CPU overview](cpu_overview.md) — entities, connections, and architectural state.
+- [Datapath](datapath.md) — instruction fields, operands, ALU, data memory, and write-back.
+- [Control unit](control_unit.md) — `control_fsm` states and control signals.
+- [Memory](memory.md) — instruction/data-memory implementation and addressing.
+- [Timing](timing.md) — single-clock state and data-update timing.
 
-The files in `docs/diagrams/` are empty placeholders; no diagram is currently implemented.
-
-## Revision history
-
-| Version | Description |
-|---|---|
-| 1.1.0 | Updated to actual entity and file names. |
-| 1.0.0 | Initial architecture index. |
+The Draw.io sources in [`../diagrams/`](../diagrams/) are editable diagrams; they are not RTL source files.

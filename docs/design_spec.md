@@ -8,7 +8,7 @@
 
 The CPU has a 4-bit datapath, 16-bit instructions, eight 4-bit registers, a 5-bit opcode field, and an 11-bit program counter. It is a single-clock, non-pipelined, multi-cycle design with synchronous active-high reset.
 
-Instruction and data memory are separate RTL components. Instruction memory is a combinational 256-word, 16-bit ROM model initialized from `tb/programs/program_add.mem` by default. Data memory is a 256-word, 4-bit memory with combinational reads, synchronous writes, and synchronous clearing on reset.
+Instruction and data memory are separate RTL components. `instruction_memory` is a combinational 256-word, 16-bit ROM model. Its entity default names `tb/programs/program_add.mem`, while the integrated `cpu_core`/`system_top` default overrides it with `tb/programs/bin/movi.mem`. Data memory is a 256-word, 4-bit memory with combinational reads, synchronous writes, and synchronous clearing on reset.
 
 ## Implemented execution state machine
 
@@ -27,7 +27,7 @@ Instruction and data memory are separate RTL components. Instruction memory is a
 - R-type instructions use `Rd`, `Rs1`, and `Rs2`; they are not two-operand destructive operations.
 - Data-memory address selection uses the zero-extended value of `Rs2`; the I-type immediate is not used as an address.
 - `MOVI` writes only the low four immediate bits and does not update flags.
-- Jump control asserts PC load while PC enable is low. Consequently `JMP`, `JZ`, and `JC` do not change the PC in the current integrated RTL.
+- `JMP` and taken `JZ`/`JC` assert both PC load and PC enable in execute, so they load the decoded 11-bit target without a delay slot.
 - The instruction-memory text-file initialization is a simulation model; no successful synthesis result is documented.
 
 ## Reserved for Future Version

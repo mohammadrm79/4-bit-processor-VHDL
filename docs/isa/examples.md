@@ -1,35 +1,33 @@
 # Programming and Program-Image Examples
 
-There is no assembler in this repository. Program files contain one 16-bit hexadecimal word per line and are loaded by `instruction_memory`.
+The repository provides an assembler in `scripts/assembler.sh` and `scripts/assembler.awk`. Assembly sources are under `tb/programs/asm/`; generated hexadecimal images are under `tb/programs/bin/`. `instruction_memory` reads one 16-bit hexadecimal word per line.
 
-## Default integration image
+## Example: add
 
-`tb/programs/program_add.mem` contains:
+[`tb/programs/asm/add.asm`](../../tb/programs/asm/add.asm) is assembled as:
 
-| Word | Meaning under current decode |
-|---|---|
-| `6109` | `MOVI R1, 9` |
-| `6204` | `MOVI R2, 4` |
-| `0328` | `ADD R3, R1, R2` |
-| `8800` | `HALT` |
+```text
+MOVI R0,5
+MOVI R1,3
+ADD R2,R0,R1
+HALT
+```
 
-The intended architectural result is R3=13 (`1101`), not R3=8. The current integration testbench expectation of R3=8 is inconsistent with this image.
+Its image, [`tb/programs/bin/add.mem`](../../tb/programs/bin/add.mem), is:
 
-## Logic image
+```text
+6005
+6103
+0204
+8800
+```
 
-`tb/programs/program_logic.mem` contains `2120`, `3230`, `4310`, and `F800`. The last word is an unallocated opcode, not `HALT`: `HALT` has opcode `10001`, whose high hex representation begins `8`. The image therefore does not halt through the implemented HALT instruction.
+After HALT, R2 contains `8`.
 
-## Jump image
+## Branch examples
 
-`tb/programs/program_jump.mem` ends with `F800`, also an unallocated opcode. Even correctly encoded jump instructions would not redirect the PC in the current integration because of the PC-enable limitation.
+The supplied `jump.asm`, `jz.asm`, and `jc.asm` programs exercise `JMP`, `JZ`, and `JC`. A target is an absolute 11-bit instruction-memory address. Taken transfers update the PC during execute; a non-taken conditional branch continues sequentially.
 
-## Not Implemented
+## Limits
 
-Assembly syntax for `CMP`, `JNZ`, direct immediate loads/stores, labels, and an assembler are not implemented by the repository.
-
-## Revision history
-
-| Version | Description |
-|---|---|
-| 1.1.0 | Replaced non-implemented assembly examples with actual program images. |
-| 1.0.0 | Initial programming examples. |
+The assembler supports the repository's allocated instructions. `CMP`, `JNZ`, direct immediate memory addressing, labels beyond the assembler's supported syntax, and signed/extended immediate semantics are not CPU features.

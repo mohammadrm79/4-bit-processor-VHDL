@@ -39,7 +39,7 @@ The immediate is used only by `MOVI`, which writes its least-significant four bi
 
 ### J-type
 
-`address[10:0]` is supplied to the PC load input. Current PC-enable control prevents that load from taking effect.
+`address[10:0]` is supplied to the PC `next_address` input. The FSM asserts both `pc_enable` and `pc_load` for a taken jump, so the PC loads this target during execute.
 
 ### S-type
 

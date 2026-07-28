@@ -9,7 +9,7 @@
 | Z | Set when the 4-bit ALU result equals `0000`. |
 | N | Result bit 3. |
 | C | Bit 4 of the ALU’s 5-bit temporary result. |
-| V | Computed only for ADD and SUB; otherwise defaults to 0. |
+| V | Computed for signed ADD and SUB; also set for INC of `0111` and DEC of `1000`; otherwise 0. |
 
 For every ALU instruction (`ADD` through `SHR`), the FSM enables flag capture in execute. `MOVI`, `LOAD`, `STORE`, `NOP`, `HALT`, and all control opcodes do not enable flag capture.
 

@@ -28,7 +28,7 @@ The PC supplies instruction-memory addresses. The instruction register loads dur
 
 ## Not Implemented
 
-There is no entity named `cpu_top`, `control_unit`, or `status_register`; those historical names are not current RTL. There is no external memory interface, pipeline, or implemented jump redirection.
+There is no entity named `cpu_top`, `control_unit`, or `status_register`; those historical names are not current RTL. There is no external memory interface or pipeline.
 
 ## Revision history
 

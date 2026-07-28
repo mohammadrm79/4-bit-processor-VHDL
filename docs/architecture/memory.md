@@ -2,7 +2,7 @@
 
 ## Instruction memory
 
-`instruction_memory` is a 256 × 16-bit model by default. It initializes from a hexadecimal text file using `hread`; its default `PROGRAM_FILE` is `tb/programs/program_add.mem`. Reads are combinational. Addresses outside `DEPTH`, or addresses containing unknown values, return an all-zero instruction.
+`instruction_memory` is a 256 × 16-bit model by default. It initializes from a hexadecimal text file using `hread`; reads are combinational. Its entity-level `PROGRAM_FILE` default is `tb/programs/program_add.mem`, while `cpu_core` and `system_top` override it with the existing `tb/programs/bin/movi.mem`. Addresses outside `DEPTH`, or addresses containing unknown values, return an all-zero instruction.
 
 ## Data memory
 

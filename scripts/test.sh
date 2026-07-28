@@ -6,7 +6,7 @@ PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TEST_LIST="$PROJECT_ROOT/tb/programs/tests.lst"
 BIN_DIR="$PROJECT_ROOT/tb/programs/bin"
 EXP_DIR="$PROJECT_ROOT/tb/programs/exp"
-TMP_DIR="$PROJECT_ROOT/build/test"
+TMP_DIR="$PROJECT_ROOT/tb/programs/out"
 
 mkdir -p "$TMP_DIR"
 

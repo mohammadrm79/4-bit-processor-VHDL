@@ -9,9 +9,9 @@ Instruction timing is governed by `control_fsm`, not by a pipeline.
 
 Fetch enables both IR capture and PC increment. ALU results and flags are captured in execute for ALU opcodes. Memory writes occur in execute. Register writes occur in write-back. The data-memory read path is combinational and is selected for `LOAD` write-back.
 
-## Not Implemented
+## Control transfers
 
-The design has no memory wait states, stalls, branching delay behavior, or functional PC redirection for jump opcodes.
+A taken jump loads the target in `EXECUTE`; there is no branch-delay slot. The design has no memory wait states or stalls.
 
 ## Revision history
 

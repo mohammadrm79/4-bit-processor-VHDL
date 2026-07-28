@@ -15,9 +15,9 @@
 
 `HALT` enters `STATE_HALTED` directly from `EXECUTE`. `NOP` and reserved opcodes perform no operation in execute/write-back and continue through the normal state sequence.
 
-## Control-flow limitation
+## Control flow
 
-`JMP`, `JZ`, and `JC` assert `pc_load` in `EXECUTE`. The PC component performs a load only when `enable='1'`, and `pc_enable` is not asserted in `EXECUTE`. Therefore these instructions do not redirect the PC in the integrated design.
+`JMP` asserts both `pc_enable` and `pc_load` in `EXECUTE`. `JZ` does the same when `zero_flag='1'`, and `JC` when `carry_flag='1'`. Because `pc` requires both signals to load `next_address`, these instructions redirect the PC to the decoder's 11-bit `jump_address` on that execute edge. A conditional branch whose condition is false does not assert either signal; the PC has already advanced during fetch.
 
 ## Not Implemented
 

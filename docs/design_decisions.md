@@ -18,7 +18,7 @@ This record distinguishes implemented decisions from ideas reserved for later wo
 
 “Harvard” describes the separate RTL memories, but both memories are internal simulation models rather than external interfaces. The instruction-memory model uses text I/O and a default program file.
 
-`memory_operation_t`, opcode helper functions, generic `counter`, generic `register_n`, and generic `mux` are defined but are not integrated into `cpu_core`.
+`memory_operation_t` and the package helper functions are defined in `cpu_pkg`. The integrated core uses direct entity instantiations and a local write-back-selection process; there are no RTL entities named `counter`, `register_n`, or `mux` in the current source tree.
 
 ## Reserved for Future Version
 

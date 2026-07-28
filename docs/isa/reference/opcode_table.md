@@ -17,9 +17,9 @@ The table is defined by `src/pkg/cpu_pkg.vhdl`.
 | 01010 | 0A | LOAD | I | `Rd ← DMEM[Rs2]` |
 | 01011 | 0B | STORE | I | `DMEM[Rs2] ← Rs1` |
 | 01100 | 0C | MOVI | I | `Rd ← immediate[3:0]` |
-| 01101 | 0D | JMP | J | PC-load signal asserted; target not loaded in integration |
-| 01110 | 0E | JZ | J | As above when Z=1 |
-| 01111 | 0F | JC | J | As above when C=1 |
+| 01101 | 0D | JMP | J | `PC ← address[10:0]` |
+| 01110 | 0E | JZ | J | `PC ← address[10:0]` when Z=1 |
+| 01111 | 0F | JC | J | `PC ← address[10:0]` when C=1 |
 | 10000 | 10 | NOP | S | No architectural write |
 | 10001 | 11 | HALT | S | Enters halted state |
 
